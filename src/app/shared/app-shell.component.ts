@@ -1,0 +1,160 @@
+import { Component, ElementRef, HostListener, computed, inject, signal, viewChild } from '@angular/core';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { AuthService } from '../core/services/auth.service';
+import type { Role } from '../core/models/user.model';
+
+interface NavItem {
+  label: string;
+  path: string;
+  roles: Role[];
+}
+
+@Component({
+  selector: 'app-shell',
+  standalone: true,
+  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  template: `
+    <div class="min-h-screen flex flex-col">
+      <header class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur">
+        <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
+          <div class="flex min-w-0 items-center gap-8">
+            <a routerLink="/home" class="min-w-0 shrink-0 leading-tight">
+              <p class="truncate text-base font-semibold text-brand-ink sm:text-lg">
+                {{ auth.currentUser?.empresaNombre }}
+              </p>
+              <p class="font-display text-sm font-bold tracking-tight text-brand/70">Ally Flow</p>
+            </a>
+
+            <nav class="hidden items-center gap-1 md:flex" aria-label="Principal">
+              @for (item of navItems(); track item.path) {
+                <a
+                  [routerLink]="item.path"
+                  routerLinkActive="nav-active"
+                  [routerLinkActiveOptions]="{ exact: item.path === '/home' }"
+                  class="nav-link"
+                >
+                  {{ item.label }}
+                </a>
+              }
+            </nav>
+          </div>
+
+          <div class="relative" #menuRoot>
+            <button
+              type="button"
+              class="flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition hover:bg-surface-muted"
+              (click)="menuOpen.set(!menuOpen()); $event.stopPropagation()"
+              [attr.aria-expanded]="menuOpen()"
+            >
+              <span
+                class="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-xs font-bold text-white"
+              >
+                {{ initials() }}
+              </span>
+              <span class="hidden sm:block">
+                <span class="block text-sm font-semibold text-brand-ink">{{ auth.currentUser?.nombre }}</span>
+                <span class="block text-[11px] uppercase tracking-wide text-accent">{{
+                  auth.currentUser?.role
+                }}</span>
+              </span>
+              <span class="text-slate-400" aria-hidden="true">▾</span>
+            </button>
+
+            @if (menuOpen()) {
+              <div
+                class="absolute right-0 mt-2 w-52 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-soft"
+                role="menu"
+              >
+                <div class="border-b border-slate-100 px-3 py-2 md:hidden">
+                  @for (item of navItems(); track item.path) {
+                    <a
+                      [routerLink]="item.path"
+                      class="block rounded px-2 py-2 text-sm text-brand-soft hover:bg-surface-muted"
+                      (click)="menuOpen.set(false)"
+                    >
+                      {{ item.label }}
+                    </a>
+                  }
+                </div>
+                <button
+                  type="button"
+                  class="block w-full px-3 py-2 text-left text-sm text-brand-soft hover:bg-surface-muted"
+                  role="menuitem"
+                  disabled
+                >
+                  Perfil (próximamente)
+                </button>
+                <button
+                  type="button"
+                  class="block w-full px-3 py-2 text-left text-sm font-semibold text-red-700 hover:bg-red-50"
+                  role="menuitem"
+                  (click)="auth.logout()"
+                >
+                  Cerrar sesión
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      </header>
+
+      <div class="flex-1">
+        <router-outlet />
+      </div>
+    </div>
+  `,
+  styles: [
+    `
+      .nav-link {
+        border-radius: 0.375rem;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--brand-soft);
+        transition: background 0.15s, color 0.15s;
+      }
+      .nav-link:hover {
+        background: var(--surface-muted);
+        color: var(--brand-ink);
+      }
+      .nav-active {
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+    `,
+  ],
+})
+export class AppShellComponent {
+  readonly auth = inject(AuthService);
+  readonly menuOpen = signal(false);
+  private readonly menuRoot = viewChild<ElementRef<HTMLElement>>('menuRoot');
+
+  private readonly allNav: NavItem[] = [
+    { label: 'Bandeja', path: '/home', roles: ['ADMIN', 'ASESOR', 'TECNICO'] },
+    { label: 'Costos', path: '/costos', roles: ['ADMIN'] },
+    { label: 'Balance', path: '/balance', roles: ['ADMIN'] },
+  ];
+
+  readonly navItems = computed(() => {
+    const role = this.auth.currentUser?.role;
+    if (!role) return [];
+    return this.allNav.filter((n) => n.roles.includes(role));
+  });
+
+  readonly initials = computed(() => {
+    const name = this.auth.currentUser?.nombre ?? '?';
+    return name
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((p: string) => p[0]?.toUpperCase() ?? '')
+      .join('');
+  });
+
+  @HostListener('document:click', ['$event'])
+  onDocClick(ev: MouseEvent): void {
+    const root = this.menuRoot()?.nativeElement;
+    if (!root?.contains(ev.target as Node)) {
+      this.menuOpen.set(false);
+    }
+  }
+}

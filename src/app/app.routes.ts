@@ -1,0 +1,52 @@
+import { Routes } from '@angular/router';
+import { authGuard, guestGuard } from './core/guards/auth.guard';
+
+export const routes: Routes = [
+  { path: '', pathMatch: 'full', redirectTo: 'home' },
+  {
+    path: 'login',
+    canActivate: [guestGuard],
+    loadComponent: () =>
+      import('./features/login/login.component').then((m) => m.LoginComponent),
+  },
+  {
+    path: '',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./shared/app-shell.component').then((m) => m.AppShellComponent),
+    children: [
+      {
+        path: 'home',
+        loadComponent: () =>
+          import('./features/home/home.component').then((m) => m.HomeComponent),
+      },
+      {
+        path: 'costos',
+        canActivate: [authGuard],
+        data: { roles: ['ADMIN'] },
+        loadComponent: () =>
+          import('./features/costos/costos.component').then((m) => m.CostosComponent),
+      },
+      {
+        path: 'balance',
+        canActivate: [authGuard],
+        data: { roles: ['ADMIN'] },
+        loadComponent: () =>
+          import('./features/balance/balance.component').then((m) => m.BalanceComponent),
+      },
+      {
+        path: 'casos/nuevo',
+        canActivate: [authGuard],
+        data: { roles: ['ASESOR', 'ADMIN'] },
+        loadComponent: () =>
+          import('./features/casos/caso-nuevo.component').then((m) => m.CasoNuevoComponent),
+      },
+      {
+        path: 'casos/:id',
+        loadComponent: () =>
+          import('./features/casos/caso-detalle.component').then((m) => m.CasoDetalleComponent),
+      },
+    ],
+  },
+  { path: '**', redirectTo: 'home' },
+];
