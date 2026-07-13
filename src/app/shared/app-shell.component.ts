@@ -1,4 +1,14 @@
-import { Component, ElementRef, HostListener, computed, inject, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  HostListener,
+  OnInit,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import {
   LucideChevronDown,
@@ -11,6 +21,7 @@ import {
 import { AuthService } from '../core/services/auth.service';
 import type { Role } from '../core/models/user.model';
 import { environment } from '../../environments/environment';
+import { formatAppVersion } from '../core/version';
 
 interface NavItem {
   label: string;
@@ -43,28 +54,47 @@ interface NavItem {
       <header class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur">
         <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
           <div class="flex min-w-0 items-center gap-8">
-            <a routerLink="/home" class="flex min-w-0 shrink-0 items-center gap-2.5">
-              <img
-                src="/icon.png"
-                alt=""
-                class="h-9 w-9 shrink-0 rounded-lg object-cover shadow-sm"
-                width="36"
-                height="36"
-              />
-              <span class="min-w-0 leading-tight">
-                <span class="block truncate text-base font-semibold text-brand-ink sm:text-lg">
-                  {{ auth.currentUser?.empresaNombre || (auth.hasRole('SUPER_ADMIN') ? 'Ally Flow Suite' : 'Ally Flow') }}
+            <!-- SUPER_ADMIN: marca sin link (no manda a Home/Suite) -->
+            @if (auth.hasRole('SUPER_ADMIN')) {
+              <div class="flex min-w-0 shrink-0 items-center gap-2.5">
+                <img
+                  src="/icon.png"
+                  alt=""
+                  class="h-9 w-9 shrink-0 rounded-lg object-cover shadow-sm"
+                  width="36"
+                  height="36"
+                />
+                <span class="min-w-0 leading-tight">
+                  <span class="block truncate text-base font-semibold text-brand-ink sm:text-lg">
+                    Ally Flow Suite
+                  </span>
+                  <span class="block text-[11px] font-semibold tracking-wide text-brand/60">Ally Flow</span>
                 </span>
-                <span class="block text-[11px] font-semibold tracking-wide text-brand/60">Ally Flow</span>
-              </span>
-            </a>
+              </div>
+            } @else {
+              <a routerLink="/home" class="flex min-w-0 shrink-0 items-center gap-2.5">
+                <img
+                  src="/icon.png"
+                  alt=""
+                  class="h-9 w-9 shrink-0 rounded-lg object-cover shadow-sm"
+                  width="36"
+                  height="36"
+                />
+                <span class="min-w-0 leading-tight">
+                  <span class="block truncate text-base font-semibold text-brand-ink sm:text-lg">
+                    {{ auth.currentUser?.empresaNombre || 'Ally Flow' }}
+                  </span>
+                  <span class="block text-[11px] font-semibold tracking-wide text-brand/60">Ally Flow</span>
+                </span>
+              </a>
+            }
 
             <nav class="hidden items-center gap-1 md:flex" aria-label="Principal">
               @for (item of navItems(); track item.path) {
                 <a
                   [routerLink]="item.path"
                   routerLinkActive="nav-active"
-                  [routerLinkActiveOptions]="{ exact: item.path === '/home' }"
+                  [routerLinkActiveOptions]="{ exact: item.path === '/home' || item.path === '/suite' }"
                   class="nav-link"
                 >
                   @switch (item.icon) {
@@ -112,7 +142,7 @@ interface NavItem {
 
             @if (menuOpen()) {
               <div
-                class="absolute right-0 mt-2 w-52 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-soft"
+                class="absolute right-0 mt-2 w-56 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-soft"
                 role="menu"
               >
                 <div class="border-b border-slate-100 px-3 py-2 md:hidden">
@@ -150,11 +180,17 @@ interface NavItem {
                   type="button"
                   class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold text-red-700 hover:bg-red-50"
                   role="menuitem"
-                  (click)="auth.logout()"
+                  (click)="logout()"
                 >
                   <svg lucideLogOut [size]="15"></svg>
                   Cerrar sesión
                 </button>
+                <div class="border-t border-slate-100 px-3 py-2 text-[10px] leading-relaxed text-slate-400">
+                  <p class="font-semibold tracking-wide">{{ appVersion }} · {{ envLabel }}</p>
+                  <p class="mt-0.5 font-medium tracking-wide">
+                    Backend {{ apiVersionLabel() }}
+                  </p>
+                </div>
               </div>
             }
           </div>
@@ -190,11 +226,21 @@ interface NavItem {
     `,
   ],
 })
-export class AppShellComponent {
+export class AppShellComponent implements OnInit {
   readonly auth = inject(AuthService);
+  private readonly http = inject(HttpClient);
   readonly menuOpen = signal(false);
   private readonly menuRoot = viewChild<ElementRef<HTMLElement>>('menuRoot');
   readonly appEnv = environment.appEnv;
+  readonly envLabel =
+    environment.appEnv === 'prod' ? 'PROD' : environment.appEnv === 'qa' ? 'QA' : 'LOCAL';
+  readonly appVersion = formatAppVersion();
+  readonly apiVersion = signal<string | null>(null);
+
+  readonly apiVersionLabel = computed(() => {
+    const v = this.apiVersion();
+    return v ? `v${v}` : '…';
+  });
 
   private readonly allNav: NavItem[] = [
     { label: 'Suite', path: '/suite', roles: ['SUPER_ADMIN'], icon: 'settings' },
@@ -217,6 +263,18 @@ export class AppShellComponent {
       .map((p: string) => p[0]?.toUpperCase() ?? '')
       .join('');
   });
+
+  ngOnInit(): void {
+    this.http.get<{ version?: string }>(`${environment.apiUrl}/health`).subscribe({
+      next: (h) => this.apiVersion.set(h.version ?? null),
+      error: () => this.apiVersion.set(null),
+    });
+  }
+
+  logout(): void {
+    this.menuOpen.set(false);
+    this.auth.logout();
+  }
 
   @HostListener('document:click', ['$event'])
   onDocClick(ev: MouseEvent): void {

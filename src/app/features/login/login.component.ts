@@ -4,6 +4,7 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { LucideChevronDown, LucideLogIn } from '@lucide/angular';
 import { AuthService } from '../../core/services/auth.service';
 import { environment } from '../../../environments/environment';
+import { formatAppVersion } from '../../core/version';
 
 interface DemoUser {
   role: string;
@@ -84,7 +85,10 @@ interface DemoEmpresa {
       <main
         class="relative flex min-h-screen items-center justify-center overflow-y-auto px-6 py-10 lg:h-screen lg:min-h-0"
       >
-        <span class="env-badge" [attr.data-env]="appEnv" aria-label="Entorno">{{ envLabel }}</span>
+        <div class="build-meta" aria-label="Entorno y versión">
+          <span class="env-badge" [attr.data-env]="appEnv">{{ envLabel }}</span>
+          <span class="version-badge">{{ appVersion }}</span>
+        </div>
         <div class="mx-auto w-full max-w-md">
           <!-- Mobile brand -->
           <div class="mb-8 lg:hidden">
@@ -335,11 +339,16 @@ interface DemoEmpresa {
         animation: floatSoft 4.2s ease-in-out infinite;
       }
 
-      .env-badge {
+      .build-meta {
         position: absolute;
         right: 1rem;
         bottom: 1rem;
         z-index: 10;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+      .env-badge {
         display: inline-flex;
         align-items: center;
         border-radius: 0.25rem;
@@ -349,6 +358,18 @@ interface DemoEmpresa {
         letter-spacing: 0.04em;
         line-height: 1.2;
         text-transform: uppercase;
+      }
+      .version-badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 0.25rem;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        padding: 0.15rem 0.4rem;
+        font-size: 0.625rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        color: #64748b;
       }
       .env-badge[data-env='prod'] {
         background: #dcfce7;
@@ -377,6 +398,7 @@ export class LoginComponent implements OnInit, OnDestroy {
   readonly appEnv = environment.appEnv;
   readonly envLabel =
     environment.appEnv === 'prod' ? 'PROD' : environment.appEnv === 'qa' ? 'QA' : 'LOCAL';
+  readonly appVersion = formatAppVersion();
   readonly demosOpen = signal(false);
   readonly demoEmpresa = signal('DEMO');
   readonly liveLabel = signal('Caso #AF-2401');

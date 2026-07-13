@@ -1,6 +1,6 @@
 {
   "name": "frontend",
-  "version": "0.0.0",
+  "version": "1.0.1",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -9,7 +9,9 @@
     "build:qa": "ng build --configuration=qa",
     "build:prod": "ng build --configuration=production",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "version:bump": "node scripts/bump-version.mjs",
+    "prepare": "node scripts/install-git-hooks.mjs"
   },
   "private": true,
   "dependencies": {
