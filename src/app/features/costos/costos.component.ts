@@ -1,9 +1,21 @@
 import { DecimalPipe, NgClass } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import {
+  LucideArrowLeft,
+  LucideFolderPlus,
+  LucidePencil,
+  LucidePlus,
+  LucideSave,
+  LucideTrash2,
+  LucideX,
+} from '@lucide/angular';
 import { AuthService } from '../../core/services/auth.service';
 import { CostosService } from '../../core/services/costos.service';
 import type { CategoriaConItems, ItemCosto, PlantillaPdfCobro } from '../../core/models/costo.model';
+import { returnLabel, safeReturnTo } from '../../shared/nav-return';
+import { SkeletonComponent } from '../../shared/skeleton.component';
 
 type CatForm = { nombre: string; descripcion: string };
 type ItemForm = {
@@ -20,9 +32,30 @@ type TabId = 'tarifas' | 'pdf';
 @Component({
   selector: 'app-costos',
   standalone: true,
-  imports: [DecimalPipe, NgClass, FormsModule],
+  imports: [
+    DecimalPipe,
+    NgClass,
+    FormsModule,
+    RouterLink,
+    LucideArrowLeft,
+    LucideFolderPlus,
+    LucidePencil,
+    LucidePlus,
+    LucideSave,
+    LucideTrash2,
+    LucideX,
+    SkeletonComponent,
+  ],
   template: `
     <main class="mx-auto max-w-6xl px-6 py-8">
+      @if (returnTo(); as back) {
+        <div class="mb-5">
+          <a [routerLink]="back.path" [queryParams]="back.queryParams" class="btn-back">
+            <svg lucideArrowLeft [size]="16"></svg>
+            {{ back.label }}
+          </a>
+        </div>
+      }
       <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 class="text-3xl font-semibold text-brand-ink">Costos por servicio</h1>
@@ -32,6 +65,7 @@ type TabId = 'tarifas' | 'pdf';
         </div>
         @if (tab() === 'tarifas') {
           <button type="button" class="btn-primary" (click)="openCatCreate()">
+            <svg lucideFolderPlus [size]="16"></svg>
             Nueva categoría
           </button>
         }
@@ -68,7 +102,7 @@ type TabId = 'tarifas' | 'pdf';
           </p>
 
           @if (plantillaLoading()) {
-            <p class="mt-6 text-slate-500">Cargando plantilla…</p>
+            <app-skeleton variant="costos-pdf" class="mt-6 block" />
           } @else if (plantillaForm) {
             <form class="mt-6 space-y-4" (ngSubmit)="savePlantilla()">
               <div class="grid gap-4 sm:grid-cols-2">
@@ -114,14 +148,20 @@ type TabId = 'tarifas' | 'pdf';
               </div>
               <div class="flex justify-end">
                 <button type="submit" class="btn-primary" [disabled]="saving()">
-                  {{ saving() ? 'Guardando…' : 'Guardar plantilla' }}
+                  @if (saving()) {
+                    <span class="spinner"></span>
+                    Guardando…
+                  } @else {
+                    <svg lucideSave [size]="16"></svg>
+                    Guardar plantilla
+                  }
                 </button>
               </div>
             </form>
           }
         </section>
       } @else if (loading()) {
-        <p class="mt-8 text-slate-500">Cargando…</p>
+        <app-skeleton variant="costos-tarifas" />
       } @else {
         <!-- Category chips -->
         <div class="mt-6 flex flex-wrap gap-2">
@@ -155,19 +195,38 @@ type TabId = 'tarifas' | 'pdf';
                     <p class="mt-0.5 text-sm text-brand-soft/80">{{ cat.descripcion }}</p>
                   }
                 </div>
-                <div class="flex flex-wrap gap-2">
-                  <button type="button" class="btn-ghost text-sm" (click)="openItemCreate(cat.id)">
-                    + Ítem
-                  </button>
-                  <button type="button" class="btn-ghost text-sm" (click)="openCatEdit(cat)">
-                    Editar
+                <div class="flex flex-wrap gap-1">
+                  <button
+                    type="button"
+                    class="btn-ghost !px-2.5 text-sm"
+                    (click)="openItemCreate(cat.id)"
+                    title="Agregar ítem"
+                  >
+                    <svg lucidePlus [size]="15"></svg>
+                    Ítem
                   </button>
                   <button
                     type="button"
-                    class="btn-ghost text-sm text-red-700 hover:bg-red-50"
-                    (click)="confirmDeleteCat(cat)"
+                    class="icon-btn"
+                    (click)="openCatEdit(cat)"
+                    title="Editar categoría"
+                    aria-label="Editar categoría"
                   >
-                    Eliminar
+                    <svg lucidePencil [size]="15"></svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="icon-btn icon-btn-danger"
+                    [disabled]="!!deletingId()"
+                    (click)="confirmDeleteCat(cat)"
+                    title="Eliminar categoría"
+                    aria-label="Eliminar categoría"
+                  >
+                    @if (deletingId() === cat.id) {
+                      <span class="spinner spinner-sm"></span>
+                    } @else {
+                      <svg lucideTrash2 [size]="15"></svg>
+                    }
                   </button>
                 </div>
               </div>
@@ -218,15 +277,28 @@ type TabId = 'tarifas' | 'pdf';
                             </span>
                           </td>
                           <td class="px-4 py-3 text-right whitespace-nowrap">
-                            <button type="button" class="btn-ghost text-sm" (click)="openItemEdit(item)">
-                              Editar
+                            <button
+                              type="button"
+                              class="icon-btn"
+                              (click)="openItemEdit(item)"
+                              title="Editar ítem"
+                              aria-label="Editar ítem"
+                            >
+                              <svg lucidePencil [size]="15"></svg>
                             </button>
                             <button
                               type="button"
-                              class="btn-ghost text-sm text-red-700 hover:bg-red-50"
+                              class="icon-btn icon-btn-danger"
+                              [disabled]="!!deletingId()"
                               (click)="confirmDeleteItem(item)"
+                              title="Eliminar ítem"
+                              aria-label="Eliminar ítem"
                             >
-                              Eliminar
+                              @if (deletingId() === item.id) {
+                                <span class="spinner spinner-sm"></span>
+                              } @else {
+                                <svg lucideTrash2 [size]="15"></svg>
+                              }
                             </button>
                           </td>
                         </tr>
@@ -272,9 +344,18 @@ type TabId = 'tarifas' | 'pdf';
                 />
               </label>
               <div class="flex justify-end gap-2 pt-2">
-                <button type="button" class="btn-ghost" (click)="closeCatModal()">Cancelar</button>
+                <button type="button" class="btn-ghost" (click)="closeCatModal()">
+                  <svg lucideX [size]="15"></svg>
+                  Cancelar
+                </button>
                 <button type="submit" class="btn-primary" [disabled]="saving()">
-                  {{ saving() ? 'Guardando…' : 'Guardar' }}
+                  @if (saving()) {
+                    <span class="spinner"></span>
+                    Guardando…
+                  } @else {
+                    <svg lucideSave [size]="16"></svg>
+                    Guardar
+                  }
                 </button>
               </div>
             </form>
@@ -355,9 +436,18 @@ type TabId = 'tarifas' | 'pdf';
                 Activo
               </label>
               <div class="flex justify-end gap-2 pt-2">
-                <button type="button" class="btn-ghost" (click)="closeItemModal()">Cancelar</button>
+                <button type="button" class="btn-ghost" (click)="closeItemModal()">
+                  <svg lucideX [size]="15"></svg>
+                  Cancelar
+                </button>
                 <button type="submit" class="btn-primary" [disabled]="saving()">
-                  {{ saving() ? 'Guardando…' : 'Guardar' }}
+                  @if (saving()) {
+                    <span class="spinner"></span>
+                    Guardando…
+                  } @else {
+                    <svg lucideSave [size]="16"></svg>
+                    Guardar
+                  }
                 </button>
               </div>
             </form>
@@ -429,17 +519,43 @@ type TabId = 'tarifas' | 'pdf';
         color: var(--accent);
         border-bottom-color: var(--accent);
       }
+      .btn-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        border-radius: 0.375rem;
+        border: 1px solid #e2e8f0;
+        background: white;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--brand-soft);
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
+      }
+      .btn-back:hover {
+        background: var(--surface-muted);
+        border-color: var(--action);
+        color: var(--action);
+      }
     `,
   ],
 })
 export class CostosComponent implements OnInit {
   readonly auth = inject(AuthService);
   private readonly costos = inject(CostosService);
+  private readonly route = inject(ActivatedRoute);
+
+  readonly returnTo = signal<{
+    path: string;
+    queryParams: Record<string, string>;
+    label: string;
+  } | null>(null);
 
   readonly tab = signal<TabId>('tarifas');
   readonly loading = signal(true);
   readonly plantillaLoading = signal(false);
   readonly saving = signal(false);
+  readonly deletingId = signal<string | null>(null);
   readonly error = signal<string | null>(null);
   readonly categorias = signal<CategoriaConItems[]>([]);
   readonly filtroCat = signal<string | null>(null);
@@ -473,6 +589,21 @@ export class CostosComponent implements OnInit {
   );
 
   ngOnInit(): void {
+    const back = safeReturnTo(this.route.snapshot.queryParamMap.get('returnTo'));
+    if (back) {
+      const [path, qs] = back.split('?');
+      const queryParams: Record<string, string> = {};
+      if (qs) {
+        new URLSearchParams(qs).forEach((v, k) => {
+          queryParams[k] = v;
+        });
+      }
+      this.returnTo.set({
+        path: path || '/home',
+        queryParams,
+        label: returnLabel(back),
+      });
+    }
     this.reload();
   }
 
@@ -598,12 +729,15 @@ export class CostosComponent implements OnInit {
         : `¿Eliminar la categoría "${cat.nombre}"?`;
     if (!confirm(msg)) return;
 
+    this.deletingId.set(cat.id);
     this.costos.deleteCategoria(cat.id).subscribe({
       next: () => {
+        this.deletingId.set(null);
         if (this.filtroCat() === cat.id) this.filtroCat.set(null);
         this.reload();
       },
       error: (err) => {
+        this.deletingId.set(null);
         this.error.set(err?.error?.message ?? 'No se pudo eliminar la categoría');
       },
     });
@@ -676,9 +810,14 @@ export class CostosComponent implements OnInit {
 
   confirmDeleteItem(item: ItemCosto): void {
     if (!confirm(`¿Eliminar el ítem "${item.nombre}"?`)) return;
+    this.deletingId.set(item.id);
     this.costos.deleteItem(item.id).subscribe({
-      next: () => this.reload(),
+      next: () => {
+        this.deletingId.set(null);
+        this.reload();
+      },
       error: (err) => {
+        this.deletingId.set(null);
         this.error.set(err?.error?.message ?? 'No se pudo eliminar el ítem');
       },
     });

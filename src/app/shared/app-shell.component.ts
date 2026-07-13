@@ -1,5 +1,13 @@
 import { Component, ElementRef, HostListener, computed, inject, signal, viewChild } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import {
+  LucideChevronDown,
+  LucideInbox,
+  LucideLogOut,
+  LucideScale,
+  LucideTags,
+  LucideUser,
+} from '@lucide/angular';
 import { AuthService } from '../core/services/auth.service';
 import type { Role } from '../core/models/user.model';
 
@@ -7,22 +15,42 @@ interface NavItem {
   label: string;
   path: string;
   roles: Role[];
+  icon: 'inbox' | 'tags' | 'scale';
 }
 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    LucideChevronDown,
+    LucideInbox,
+    LucideLogOut,
+    LucideScale,
+    LucideTags,
+    LucideUser,
+  ],
   template: `
     <div class="min-h-screen flex flex-col">
       <header class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur">
         <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
           <div class="flex min-w-0 items-center gap-8">
-            <a routerLink="/home" class="min-w-0 shrink-0 leading-tight">
-              <p class="truncate text-base font-semibold text-brand-ink sm:text-lg">
-                {{ auth.currentUser?.empresaNombre }}
-              </p>
-              <p class="font-display text-sm font-bold tracking-tight text-brand/70">Ally Flow</p>
+            <a routerLink="/home" class="flex min-w-0 shrink-0 items-center gap-2.5">
+              <img
+                src="/icon.png"
+                alt=""
+                class="h-9 w-9 shrink-0 rounded-lg object-cover shadow-sm"
+                width="36"
+                height="36"
+              />
+              <span class="min-w-0 leading-tight">
+                <span class="block truncate text-base font-semibold text-brand-ink sm:text-lg">
+                  {{ auth.currentUser?.empresaNombre }}
+                </span>
+                <span class="block text-[11px] font-semibold tracking-wide text-brand/60">Ally Flow</span>
+              </span>
             </a>
 
             <nav class="hidden items-center gap-1 md:flex" aria-label="Principal">
@@ -33,6 +61,17 @@ interface NavItem {
                   [routerLinkActiveOptions]="{ exact: item.path === '/home' }"
                   class="nav-link"
                 >
+                  @switch (item.icon) {
+                    @case ('inbox') {
+                      <svg lucideInbox [size]="15"></svg>
+                    }
+                    @case ('tags') {
+                      <svg lucideTags [size]="15"></svg>
+                    }
+                    @case ('scale') {
+                      <svg lucideScale [size]="15"></svg>
+                    }
+                  }
                   {{ item.label }}
                 </a>
               }
@@ -57,7 +96,12 @@ interface NavItem {
                   auth.currentUser?.role
                 }}</span>
               </span>
-              <span class="text-slate-400" aria-hidden="true">▾</span>
+              <svg
+                lucideChevronDown
+                [size]="16"
+                class="text-slate-400 transition"
+                [class.rotate-180]="menuOpen()"
+              ></svg>
             </button>
 
             @if (menuOpen()) {
@@ -69,27 +113,40 @@ interface NavItem {
                   @for (item of navItems(); track item.path) {
                     <a
                       [routerLink]="item.path"
-                      class="block rounded px-2 py-2 text-sm text-brand-soft hover:bg-surface-muted"
+                      class="flex items-center gap-2 rounded px-2 py-2 text-sm text-brand-soft hover:bg-surface-muted"
                       (click)="menuOpen.set(false)"
                     >
+                      @switch (item.icon) {
+                        @case ('inbox') {
+                          <svg lucideInbox [size]="15"></svg>
+                        }
+                        @case ('tags') {
+                          <svg lucideTags [size]="15"></svg>
+                        }
+                        @case ('scale') {
+                          <svg lucideScale [size]="15"></svg>
+                        }
+                      }
                       {{ item.label }}
                     </a>
                   }
                 </div>
                 <button
                   type="button"
-                  class="block w-full px-3 py-2 text-left text-sm text-brand-soft hover:bg-surface-muted"
+                  class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-brand-soft hover:bg-surface-muted"
                   role="menuitem"
                   disabled
                 >
+                  <svg lucideUser [size]="15"></svg>
                   Perfil (próximamente)
                 </button>
                 <button
                   type="button"
-                  class="block w-full px-3 py-2 text-left text-sm font-semibold text-red-700 hover:bg-red-50"
+                  class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold text-red-700 hover:bg-red-50"
                   role="menuitem"
                   (click)="auth.logout()"
                 >
+                  <svg lucideLogOut [size]="15"></svg>
                   Cerrar sesión
                 </button>
               </div>
@@ -106,6 +163,9 @@ interface NavItem {
   styles: [
     `
       .nav-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
         border-radius: 0.375rem;
         padding: 0.5rem 0.75rem;
         font-size: 0.875rem;
@@ -130,9 +190,9 @@ export class AppShellComponent {
   private readonly menuRoot = viewChild<ElementRef<HTMLElement>>('menuRoot');
 
   private readonly allNav: NavItem[] = [
-    { label: 'Bandeja', path: '/home', roles: ['ADMIN', 'ASESOR', 'TECNICO'] },
-    { label: 'Costos', path: '/costos', roles: ['ADMIN'] },
-    { label: 'Balance', path: '/balance', roles: ['ADMIN'] },
+    { label: 'Bandeja', path: '/home', roles: ['ADMIN', 'ASESOR', 'TECNICO'], icon: 'inbox' },
+    { label: 'Costos', path: '/costos', roles: ['ADMIN'], icon: 'tags' },
+    { label: 'Balance', path: '/balance', roles: ['ADMIN'], icon: 'scale' },
   ];
 
   readonly navItems = computed(() => {

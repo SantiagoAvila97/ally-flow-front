@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
+import { LucideChevronDown, LucideLogIn } from '@lucide/angular';
 import { AuthService } from '../../core/services/auth.service';
 
 interface DemoUser {
@@ -17,7 +18,7 @@ interface DemoEmpresa {
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, LucideLogIn, LucideChevronDown],
   template: `
     <div class="min-h-screen grid lg:grid-cols-2 lg:h-screen">
       <!-- Brand panel -->
@@ -30,13 +31,17 @@ interface DemoEmpresa {
         <div class="pointer-events-none absolute -left-24 bottom-8 h-72 w-72 rounded-full bg-white/10 blur-3xl"></div>
 
         <div class="relative z-10 flex w-full max-w-md flex-col items-center text-center">
-          <p class="font-display text-5xl font-bold tracking-tight">Ally Flow</p>
-          <p class="mt-3 max-w-sm text-base leading-relaxed text-white/70">
+          <img
+            src="/logo.png"
+            alt="Ally Flow"
+            class="brand-logo-wide h-auto w-full max-w-[260px]"
+          />
+          <p class="mt-5 max-w-sm text-base leading-relaxed text-white/70">
             De la llamada al cobro, en un solo flujo.
           </p>
 
-          <!-- Live status — single strong motion -->
-          <div class="live-pill mt-10 w-full max-w-xs animate-glow-pulse">
+          <!-- Live status — única card, flota suave -->
+          <div class="live-pill mt-10 w-full max-w-xs animate-float-soft">
             <div class="flex items-center justify-center gap-2">
               <span class="relative flex h-2 w-2">
                 <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-teal-300 opacity-75"></span>
@@ -49,12 +54,12 @@ interface DemoEmpresa {
           </div>
 
           <!-- 3 numbered steps -->
-          <ol class="mt-10 w-full space-y-0">
+          <ol class="mt-8 w-full space-y-0">
             @for (step of steps; track step.n; let last = $last) {
               <li class="relative flex gap-4 text-left">
                 <div class="flex flex-col items-center">
                   <span
-                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 text-xs font-bold tracking-wide"
+                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 text-xs font-bold tracking-wide backdrop-blur-sm"
                   >
                     {{ step.n }}
                   </span>
@@ -79,9 +84,15 @@ interface DemoEmpresa {
         class="flex min-h-screen items-center justify-center overflow-y-auto px-6 py-10 lg:h-screen lg:min-h-0"
       >
         <div class="mx-auto w-full max-w-md">
-          <!-- Mobile brand + mini flow -->
+          <!-- Mobile brand -->
           <div class="mb-8 lg:hidden">
-            <p class="font-display text-center text-3xl font-bold tracking-tight text-brand">Ally Flow</p>
+            <div class="logo-plate logo-plate-light mx-auto w-fit">
+              <img
+                src="/logo.png"
+                alt="Ally Flow"
+                class="h-auto w-full max-w-[200px]"
+              />
+            </div>
             <div class="mt-5 flex items-start justify-between gap-1 rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-soft">
               @for (step of steps; track step.n; let last = $last) {
                 <div class="flex min-w-0 flex-1 flex-col items-center text-center">
@@ -101,7 +112,16 @@ interface DemoEmpresa {
 
           <div class="rounded-2xl border border-slate-200/80 bg-white px-6 py-8 shadow-soft sm:px-8">
             <div class="text-center">
-              <h1 class="text-2xl font-semibold text-brand-ink sm:text-3xl">Bienvenido</h1>
+              <div class="icon-plate mx-auto">
+                <img
+                  src="/icon.png"
+                  alt=""
+                  class="h-12 w-12 object-contain"
+                  width="48"
+                  height="48"
+                />
+              </div>
+              <h1 class="mt-4 text-2xl font-semibold text-brand-ink sm:text-3xl">Bienvenido</h1>
               <p class="mt-1.5 text-sm text-brand-soft/80">
                 Inicia sesión y lleva tu equipo de punta a punta.
               </p>
@@ -139,7 +159,13 @@ interface DemoEmpresa {
               }
 
               <button type="submit" class="btn-primary w-full" [disabled]="loading() || form.invalid">
-                {{ loading() ? 'Entrando…' : 'Iniciar sesión' }}
+                @if (loading()) {
+                  <span class="spinner"></span>
+                  Entrando…
+                } @else {
+                  <svg lucideLogIn [size]="16"></svg>
+                  Iniciar sesión
+                }
               </button>
             </form>
 
@@ -152,7 +178,12 @@ interface DemoEmpresa {
                 [attr.aria-expanded]="demosOpen()"
               >
                 <span>Probar con una empresa demo</span>
-                <span class="text-slate-400 transition" [class.rotate-180]="demosOpen()" aria-hidden="true">▾</span>
+                <svg
+                  lucideChevronDown
+                  [size]="16"
+                  class="shrink-0 text-slate-400 transition"
+                  [class.rotate-180]="demosOpen()"
+                ></svg>
               </button>
 
               @if (demosOpen()) {
@@ -211,12 +242,57 @@ interface DemoEmpresa {
           linear-gradient(165deg, rgb(7 20 34 / 0.4), transparent 55%);
       }
 
+      .brand-logo-wide {
+        display: block;
+        background: transparent;
+      }
+
+      .logo-plate {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.85rem;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        padding: 0.65rem 0.9rem;
+        box-shadow: 0 10px 28px -18px rgb(15 42 68 / 0.35);
+      }
+
+      .logo-plate img {
+        display: block;
+        border-radius: 0.4rem;
+      }
+
+      .logo-plate-light {
+        border-color: #e2e8f0;
+        background: #f8fafc;
+      }
+
+      .icon-plate {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 4rem;
+        width: 4rem;
+        border-radius: 1rem;
+        border: 1px solid #e2e8f0;
+        background: #f1f5f9;
+        box-shadow: 0 8px 20px -14px rgb(15 42 68 / 0.35);
+      }
+
+      .icon-plate img {
+        display: block;
+        border-radius: 0.5rem;
+      }
+
       .live-pill {
         border-radius: 1rem;
         border: 1px solid rgb(204 251 241 / 0.35);
-        background: linear-gradient(145deg, rgb(15 118 110 / 0.5), rgb(30 58 95 / 0.72));
+        background: linear-gradient(145deg, rgb(15 118 110 / 0.65), rgb(30 58 95 / 0.85));
         padding: 1rem 1.25rem;
         box-shadow: 0 0 0 1px rgb(255 255 255 / 0.06), 0 20px 50px -24px rgb(15 118 110 / 0.9);
+        backdrop-filter: blur(8px);
+        will-change: transform;
       }
 
       .flow-rail {
@@ -241,18 +317,18 @@ interface DemoEmpresa {
         }
       }
 
-      @keyframes glowPulse {
+      @keyframes floatSoft {
         0%,
         100% {
-          box-shadow: 0 0 0 1px rgb(255 255 255 / 0.06), 0 20px 50px -24px rgb(15 118 110 / 0.65);
+          transform: translateY(0);
         }
         50% {
-          box-shadow: 0 0 0 1px rgb(204 251 241 / 0.3), 0 24px 56px -16px rgb(15 118 110 / 1);
+          transform: translateY(-10px);
         }
       }
 
-      .animate-glow-pulse {
-        animation: glowPulse 3.2s ease-in-out infinite;
+      .animate-float-soft {
+        animation: floatSoft 4.2s ease-in-out infinite;
       }
     `,
   ],
@@ -299,7 +375,9 @@ export class LoginComponent implements OnInit, OnDestroy {
   private readonly liveFrames = [
     { label: 'Caso #AF-2401', hint: 'Asignando técnico…' },
     { label: 'En gestión', hint: 'Evidencias en campo' },
-    { label: 'Pendiente recaudo', hint: 'Listo para cobro' },
+    { label: 'Documento de cobro', hint: 'Armando PDF oficial' },
+    { label: 'Confirmación asegurado', hint: 'Esperando OK' },
+    { label: 'Recepción de pago', hint: 'Pendiente de cobro' },
     { label: 'Cobrado', hint: 'Balance actualizado' },
   ];
 

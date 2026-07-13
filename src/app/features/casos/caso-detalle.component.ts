@@ -3,13 +3,36 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import {
+  LucideArrowLeft,
+  LucideArrowRight,
+  LucideBadgeCheck,
+  LucideBanknote,
+  LucideCircleCheck,
+  LucideDownload,
+  LucideEraser,
+  LucideImagePlus,
+  LucideMapPin,
+  LucideMinus,
+  LucideNavigation,
+  LucidePlay,
+  LucidePlus,
+  LucideSave,
+  LucideSend,
+  LucideShield,
+  LucideTrash2,
+  LucideUserCheck,
+  LucideX,
+} from '@lucide/angular';
 import { AuthService } from '../../core/services/auth.service';
 import { CasosService } from '../../core/services/casos.service';
 import { CostosService } from '../../core/services/costos.service';
 import type { Caso, EstadoCaso, LineaCobro, TecnicoOption, TipoFirmaCierre } from '../../core/models/caso.model';
 import type { CategoriaConItems, ItemCosto } from '../../core/models/costo.model';
 import { mapsLinks } from '../../shared/maps.util';
+import { returnLabel, safeReturnTo } from '../../shared/nav-return';
 import { SignaturePadComponent } from '../../shared/signature-pad.component';
+import { SkeletonComponent } from '../../shared/skeleton.component';
 
 type ConfirmKind =
   | 'asignar'
@@ -30,16 +53,46 @@ interface ConfirmEstadoPayload {
 @Component({
   selector: 'app-caso-detalle',
   standalone: true,
-  imports: [DatePipe, DecimalPipe, NgClass, FormsModule, RouterLink, SignaturePadComponent],
+  imports: [
+    DatePipe,
+    DecimalPipe,
+    NgClass,
+    FormsModule,
+    RouterLink,
+    SignaturePadComponent,
+    LucideArrowLeft,
+    LucideArrowRight,
+    LucideBadgeCheck,
+    LucideBanknote,
+    LucideCircleCheck,
+    LucideDownload,
+    LucideEraser,
+    LucideImagePlus,
+    LucideMapPin,
+    LucideMinus,
+    LucideNavigation,
+    LucidePlay,
+    LucidePlus,
+    LucideSave,
+    LucideSend,
+    LucideShield,
+    LucideTrash2,
+    LucideUserCheck,
+    LucideX,
+    SkeletonComponent,
+  ],
   template: `
     <div class="pb-16">
       <main class="mx-auto max-w-4xl px-6 py-8">
         <div class="mb-6">
-          <a routerLink="/home" class="btn-ghost">← Bandeja</a>
+          <a [routerLink]="backNav().path" [queryParams]="backNav().queryParams" class="btn-back">
+            <svg lucideArrowLeft [size]="16"></svg>
+            {{ backNav().label }}
+          </a>
         </div>
 
         @if (loading()) {
-          <p class="text-slate-500">Cargando…</p>
+          <app-skeleton variant="caso-detalle" />
         } @else if (error() && !caso()) {
           <p class="rounded-md bg-red-50 px-4 py-3 text-red-700">{{ error() }}</p>
         } @else {
@@ -90,9 +143,18 @@ interface ConfirmEstadoPayload {
                 <p class="mt-1 text-xs text-slate-500">{{ c.direccionNormalizada }}</p>
               }
               <div class="mt-2 flex flex-wrap gap-2">
-                <a class="btn-primary !text-xs" [href]="links.google" target="_blank" rel="noopener">Google Maps</a>
-                <a class="btn-ghost !text-xs border border-slate-200" [href]="links.apple" target="_blank" rel="noopener">Apple Maps</a>
-                <a class="btn-ghost !text-xs border border-slate-200" [href]="links.waze" target="_blank" rel="noopener">Waze</a>
+                <a class="btn-primary !text-xs" [href]="links.google" target="_blank" rel="noopener">
+                  <svg lucideMapPin [size]="14"></svg>
+                  Google Maps
+                </a>
+                <a class="btn-ghost !text-xs border border-slate-200" [href]="links.apple" target="_blank" rel="noopener">
+                  <svg lucideMapPin [size]="14"></svg>
+                  Apple Maps
+                </a>
+                <a class="btn-ghost !text-xs border border-slate-200" [href]="links.waze" target="_blank" rel="noopener">
+                  <svg lucideNavigation [size]="14"></svg>
+                  Waze
+                </a>
               </div>
               @if (mapEmbedSafe()) {
                 <iframe
@@ -125,6 +187,11 @@ interface ConfirmEstadoPayload {
                   }
                 </select>
                 <button type="button" class="btn-estado" [disabled]="!tecnicoSelected || busy()" (click)="pedirAsignar(c)">
+                  @if (busy()) {
+                    <span class="spinner"></span>
+                  } @else {
+                    <svg lucideUserCheck [size]="16"></svg>
+                  }
                   Asignar
                 </button>
               </div>
@@ -132,7 +199,7 @@ interface ConfirmEstadoPayload {
           }
 
           @if (canArmarDocumento(c)) {
-            <section class="mt-8 rounded-lg border border-orange-200 bg-orange-50/40 p-5">
+            <section class="mt-8 rounded-lg border border-orange-200 bg-white p-5">
               <h2 class="text-sm font-semibold text-brand-ink">Documento de cobro</h2>
               @if (c.documentoCobroGeneradoAt) {
                 <p class="mt-1 text-xs text-slate-500">
@@ -141,7 +208,13 @@ interface ConfirmEstadoPayload {
               }
 
               @if (draftLineas.length) {
-                <div class="mt-4 overflow-x-auto">
+                <div class="relative mt-4">
+                  @if (lineasSaving()) {
+                    <div class="absolute inset-0 z-10 rounded-md bg-white/80" aria-busy="true">
+                      <app-skeleton variant="lineas-table" [rows]="draftLineas.length" />
+                    </div>
+                  }
+                  <div class="overflow-x-auto" [class.opacity-40]="lineasSaving()">
                   <table class="w-full min-w-[520px] text-left text-sm">
                     <thead>
                       <tr class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
@@ -159,13 +232,29 @@ interface ConfirmEstadoPayload {
                           <td class="py-2 pr-2 font-medium">{{ linea.nombre }}</td>
                           <td class="py-2 pr-2 text-slate-600">{{ linea.unidad }}</td>
                           <td class="py-2 pr-2">
-                            <input
-                              type="number"
-                              min="0.01"
-                              step="0.01"
-                              class="w-20 rounded-md border border-slate-300 px-2 py-1 text-sm"
-                              [(ngModel)]="linea.cantidad"
-                            />
+                            <div class="inline-flex items-center gap-1">
+                              <button
+                                type="button"
+                                class="qty-btn"
+                                [disabled]="busy() || lineasSaving() || linea.cantidad <= 1"
+                                (click)="cambiarCantidad(i, -1)"
+                                aria-label="Restar uno"
+                              >
+                                <svg lucideMinus [size]="14"></svg>
+                              </button>
+                              <span class="min-w-[1.75rem] text-center tabular-nums font-semibold">
+                                {{ linea.cantidad }}
+                              </span>
+                              <button
+                                type="button"
+                                class="qty-btn"
+                                [disabled]="busy() || lineasSaving()"
+                                (click)="cambiarCantidad(i, 1)"
+                                aria-label="Sumar uno"
+                              >
+                                <svg lucidePlus [size]="14"></svg>
+                              </button>
+                            </div>
                           </td>
                           <td class="py-2 pr-2 text-right tabular-nums">
                             {{ linea.precioUnitario | number: '1.0-2' }}
@@ -176,11 +265,13 @@ interface ConfirmEstadoPayload {
                           <td class="py-2 text-right">
                             <button
                               type="button"
-                              class="btn-ghost !text-xs text-red-700"
-                              [disabled]="busy()"
+                              class="icon-btn icon-btn-danger"
+                              [disabled]="busy() || lineasSaving()"
                               (click)="quitarLinea(i)"
+                              title="Eliminar ítem"
+                              aria-label="Eliminar ítem"
                             >
-                              Quitar
+                              <svg lucideTrash2 [size]="16"></svg>
                             </button>
                           </td>
                         </tr>
@@ -198,6 +289,7 @@ interface ConfirmEstadoPayload {
                       </tr>
                     </tfoot>
                   </table>
+                  </div>
                 </div>
               } @else {
                 <p class="mt-3 text-sm text-slate-500">Aún no hay líneas. Agrega ítems del catálogo.</p>
@@ -205,22 +297,26 @@ interface ConfirmEstadoPayload {
 
               <div class="mt-4 flex flex-wrap items-end gap-2">
                 <div class="min-w-[240px] flex-1">
-                  <label class="text-xs uppercase tracking-wide text-slate-500">Agregar ítem</label>
-                  <select
-                    class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                    [(ngModel)]="itemToAddId"
-                  >
-                    <option value="">Selecciona del catálogo…</option>
-                    @for (opt of catalogoOpciones(); track opt.id) {
-                      <option [value]="opt.id">{{ opt.label }}</option>
+                  @if (catalogoLoading()) {
+                    <app-skeleton variant="catalog-field" />
+                  } @else {
+                    <label class="text-xs uppercase tracking-wide text-slate-500">Agregar ítem</label>
+                    <select
+                      class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                      [(ngModel)]="itemToAddId"
+                    >
+                      <option value="">Selecciona del catálogo…</option>
+                      @for (opt of catalogoOpciones(); track opt.id) {
+                        <option [value]="opt.id">{{ opt.label }}</option>
+                      }
+                    </select>
+                    @if (catalogoError()) {
+                      <p class="mt-1 text-xs text-red-600">{{ catalogoError() }}</p>
+                    } @else if (!catalogoOpciones().length) {
+                      <p class="mt-1 text-xs text-amber-700">
+                        No hay ítems activos. Créalos en Costos (admin).
+                      </p>
                     }
-                  </select>
-                  @if (catalogoError()) {
-                    <p class="mt-1 text-xs text-red-600">{{ catalogoError() }}</p>
-                  } @else if (!catalogoOpciones().length && !catalogoLoading()) {
-                    <p class="mt-1 text-xs text-amber-700">
-                      No hay ítems activos. Créalos en Costos (admin).
-                    </p>
                   }
                 </div>
                 <button
@@ -229,33 +325,36 @@ interface ConfirmEstadoPayload {
                   [disabled]="!itemToAddId || busy() || catalogoLoading()"
                   (click)="agregarLinea()"
                 >
+                  <svg lucidePlus [size]="16"></svg>
                   Agregar
                 </button>
               </div>
 
-              <div class="mt-4 flex flex-wrap gap-2">
+              <div class="mt-4 flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   class="btn-primary"
-                  [disabled]="busy() || !draftLineas.length"
-                  (click)="guardarLineas(c)"
-                >
-                  Guardar líneas
-                </button>
-                <button
-                  type="button"
-                  class="btn-primary"
-                  [disabled]="busy() || !c.lineasCobro.length"
+                  [disabled]="busy() || lineasSaving() || !draftLineas.length"
                   (click)="descargarPdf(c)"
                 >
+                  @if (busy()) {
+                    <span class="spinner"></span>
+                  } @else {
+                    <svg lucideDownload [size]="16"></svg>
+                  }
                   Descargar PDF
                 </button>
                 <button
                   type="button"
                   class="btn-estado"
-                  [disabled]="busy() || !c.lineasCobro.length"
+                  [disabled]="busy() || lineasSaving() || !draftLineas.length"
                   (click)="pedirMarcarEnviado(c)"
                 >
+                  @if (busy()) {
+                    <span class="spinner"></span>
+                  } @else {
+                    <svg lucideSend [size]="16"></svg>
+                  }
                   Marcar enviado
                 </button>
               </div>
@@ -263,7 +362,7 @@ interface ConfirmEstadoPayload {
           }
 
           @if (canConfirmarAsegurado(c)) {
-            <section class="mt-8 rounded-lg border border-blue-200 bg-blue-50/40 p-5">
+            <section class="mt-8 rounded-lg border border-blue-200 bg-white p-5">
               <h2 class="text-sm font-semibold text-brand-ink">Confirmación del asegurado</h2>
               <p class="mt-1 text-sm text-slate-600">
                 El documento fue enviado. Confirma cuando el asegurado lo apruebe.
@@ -275,6 +374,11 @@ interface ConfirmEstadoPayload {
                   [disabled]="busy()"
                   (click)="pedirConfirmarAsegurado(c)"
                 >
+                  @if (busy()) {
+                    <span class="spinner"></span>
+                  } @else {
+                    <svg lucideBadgeCheck [size]="16"></svg>
+                  }
                   Confirmar asegurado
                 </button>
                 <button
@@ -283,6 +387,11 @@ interface ConfirmEstadoPayload {
                   [disabled]="busy() || !c.lineasCobro.length"
                   (click)="descargarPdf(c)"
                 >
+                  @if (busy()) {
+                    <span class="spinner"></span>
+                  } @else {
+                    <svg lucideDownload [size]="16"></svg>
+                  }
                   Descargar PDF
                 </button>
               </div>
@@ -290,11 +399,16 @@ interface ConfirmEstadoPayload {
           }
 
           @if (canMarcarCobrado(c)) {
-            <section class="mt-8 rounded-lg border border-teal-200 bg-teal-50/40 p-5">
+            <section class="mt-8 rounded-lg border border-teal-200 bg-white p-5">
               <h2 class="text-sm font-semibold text-brand-ink">Recepción de pago</h2>
               <p class="mt-1 text-sm text-slate-600">Marca el caso como cobrado cuando el pago sea recibido.</p>
               <div class="mt-4 flex flex-wrap gap-2">
                 <button type="button" class="btn-estado" [disabled]="busy()" (click)="pedirCobrar(c)">
+                  @if (busy()) {
+                    <span class="spinner"></span>
+                  } @else {
+                    <svg lucideBanknote [size]="16"></svg>
+                  }
                   Marcar cobrado
                 </button>
                 <button
@@ -303,6 +417,11 @@ interface ConfirmEstadoPayload {
                   [disabled]="busy() || !c.lineasCobro.length"
                   (click)="descargarPdf(c)"
                 >
+                  @if (busy()) {
+                    <span class="spinner"></span>
+                  } @else {
+                    <svg lucideDownload [size]="16"></svg>
+                  }
                   Descargar PDF
                 </button>
               </div>
@@ -312,6 +431,11 @@ interface ConfirmEstadoPayload {
           @if (canGarantia(c)) {
             <section class="mt-6">
               <button type="button" class="btn-estado" [disabled]="busy()" (click)="pedirGarantia(c)">
+                @if (busy()) {
+                  <span class="spinner"></span>
+                } @else {
+                  <svg lucideShield [size]="16"></svg>
+                }
                 Abrir por garantía
               </button>
             </section>
@@ -319,11 +443,16 @@ interface ConfirmEstadoPayload {
 
           <!-- Acciones TECNICO -->
           @if (isTecnicoAsignado(c)) {
-            <section class="mt-8 space-y-6 rounded-lg border border-accent/30 bg-accent-soft/20 p-5 ring-1 ring-accent/20">
-              <h2 class="text-sm font-semibold text-accent">Acciones de técnico</h2>
+            <section class="mt-8 space-y-6 rounded-lg border border-slate-200 bg-white p-5">
+              <h2 class="text-sm font-semibold text-brand-ink">Acciones de técnico</h2>
 
               @if (c.estado === 'Asignado') {
                 <button type="button" class="btn-estado" [disabled]="busy()" (click)="pedirIniciar(c)">
+                  @if (busy()) {
+                    <span class="spinner"></span>
+                  } @else {
+                    <svg lucidePlay [size]="16"></svg>
+                  }
                   Iniciar gestión
                 </button>
               }
@@ -350,6 +479,11 @@ interface ConfirmEstadoPayload {
                       placeholder="URL de foto evidencia"
                     />
                     <button type="button" class="btn-primary" [disabled]="busy()" (click)="subirFoto(c)">
+                      @if (busy()) {
+                        <span class="spinner"></span>
+                      } @else {
+                        <svg lucideImagePlus [size]="16"></svg>
+                      }
                       Subir foto
                     </button>
                   </div>
@@ -373,13 +507,19 @@ interface ConfirmEstadoPayload {
                       [disabled]="busy() || notaDocumentacion.trim().length < 3"
                       (click)="documentar(c)"
                     >
+                      @if (busy()) {
+                        <span class="spinner spinner-sm"></span>
+                      } @else {
+                        <svg lucideSave [size]="15"></svg>
+                      }
                       Guardar documentación
                     </button>
                     <button
                       type="button"
-                      class="mt-4 block w-full text-left text-sm font-semibold text-accent underline"
+                      class="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-accent underline"
                       (click)="modoCerrar.set(true)"
                     >
+                      <svg lucideCircleCheck [size]="15"></svg>
                       Cerrar caso
                     </button>
                   </div>
@@ -397,6 +537,7 @@ interface ConfirmEstadoPayload {
                         class="btn-ghost !text-xs border border-slate-200"
                         (click)="cancelarCierre()"
                       >
+                        <svg lucideX [size]="14"></svg>
                         Cancelar
                       </button>
                     </div>
@@ -421,7 +562,10 @@ interface ConfirmEstadoPayload {
                         <p class="text-xs font-semibold uppercase text-slate-500">Firma técnico</p>
                         @if (firmaTecnico()) {
                           <img [src]="firmaTecnico()!" alt="Firma técnico" class="mt-1 h-20 rounded border bg-white" />
-                          <button type="button" class="btn-ghost !text-xs" (click)="firmaTecnico.set(null)">Limpiar</button>
+                          <button type="button" class="btn-ghost !text-xs" (click)="firmaTecnico.set(null)">
+                            <svg lucideEraser [size]="14"></svg>
+                            Limpiar
+                          </button>
                         } @else {
                           <app-signature-pad (signed)="firmaTecnico.set($event)" />
                         }
@@ -433,7 +577,10 @@ interface ConfirmEstadoPayload {
                         <p class="text-xs font-semibold uppercase text-slate-500">Firma atendido</p>
                         @if (firmaAtendido()) {
                           <img [src]="firmaAtendido()!" alt="Firma atendido" class="mt-1 h-20 rounded border bg-white" />
-                          <button type="button" class="btn-ghost !text-xs" (click)="firmaAtendido.set(null)">Limpiar</button>
+                          <button type="button" class="btn-ghost !text-xs" (click)="firmaAtendido.set(null)">
+                            <svg lucideEraser [size]="14"></svg>
+                            Limpiar
+                          </button>
                         } @else {
                           <app-signature-pad (signed)="firmaAtendido.set($event)" />
                         }
@@ -446,6 +593,11 @@ interface ConfirmEstadoPayload {
                       [disabled]="busy() || c.fotos.length < 1 || !puedeCerrar()"
                       (click)="pedirCerrarCaso(c)"
                     >
+                      @if (busy()) {
+                        <span class="spinner"></span>
+                      } @else {
+                        <svg lucideCircleCheck [size]="16"></svg>
+                      }
                       Confirmar cierre
                     </button>
                   </div>
@@ -518,7 +670,7 @@ interface ConfirmEstadoPayload {
               <span class="font-semibold text-emerald-800">{{ conf.toLabel }}</span>
             </p>
 
-            <ul class="mt-4 space-y-1.5 rounded-md border border-slate-200 bg-surface-muted/40 px-3 py-3 text-sm text-brand-ink">
+            <ul class="mt-4 space-y-1.5 rounded-md border border-slate-200 bg-white px-3 py-3 text-sm text-brand-ink">
               @for (line of conf.lines; track $index) {
                 <li>{{ line }}</li>
               }
@@ -526,10 +678,17 @@ interface ConfirmEstadoPayload {
 
             <div class="mt-5 flex justify-end gap-2">
               <button type="button" class="btn-ghost border border-slate-200" [disabled]="busy()" (click)="cerrarConfirmacion()">
+                <svg lucideX [size]="15"></svg>
                 Cancelar
               </button>
               <button type="button" class="btn-estado" [disabled]="busy()" (click)="ejecutarConfirmacion()">
-                {{ busy() ? 'Procesando…' : 'Confirmar avance' }}
+                @if (busy()) {
+                  <span class="spinner"></span>
+                  Procesando…
+                } @else {
+                  <svg lucideArrowRight [size]="16"></svg>
+                  Confirmar avance
+                }
               </button>
             </div>
           </div>
@@ -557,6 +716,48 @@ interface ConfirmEstadoPayload {
         background: white;
         padding: 1.25rem 1.5rem;
         box-shadow: 0 24px 60px -24px rgb(15 42 68 / 0.45);
+      }
+      .qty-btn {
+        display: inline-flex;
+        height: 1.75rem;
+        width: 1.75rem;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.375rem;
+        border: 1px solid #cbd5e1;
+        background: white;
+        font-size: 0.95rem;
+        font-weight: 700;
+        line-height: 1;
+        color: var(--brand-soft);
+        transition: background 0.15s, border-color 0.15s;
+      }
+      .qty-btn:hover:not(:disabled) {
+        background: var(--surface-muted);
+        border-color: var(--action);
+        color: var(--action);
+      }
+      .qty-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      .btn-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        border-radius: 0.375rem;
+        border: 1px solid #cbd5e1;
+        background: white;
+        padding: 0.5rem 0.9rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--brand-ink);
+        transition: background 0.15s, border-color 0.15s;
+      }
+      .btn-back:hover {
+        background: var(--surface-muted);
+        border-color: var(--action);
+        color: var(--action);
       }
     `,
   ],
@@ -595,16 +796,41 @@ export class CasoDetalleComponent implements OnInit {
   readonly mapEmbedSafe = signal<SafeResourceUrl | null>(null);
   readonly modoCerrar = signal(false);
   readonly confirmOpen = signal<ConfirmEstadoPayload | null>(null);
+  readonly lineasSaving = signal(false);
 
   draftLineas: LineaCobro[] = [];
   itemToAddId = '';
   tecnicoSelected = '';
-  fotoUrl = 'https://placehold.co/600x400/0f766e/ffffff?text=Evidencia';
+  fotoUrl = 'https://placehold.co/600x400/111111/ffffff?text=Evidencia';
   notaDocumentacion = '';
   tipoFirma: TipoFirmaCierre = 'TECNICO';
   links = mapsLinks('', '');
+  private lineasPersistTimer?: ReturnType<typeof setTimeout>;
+  private skipNextDraftSync = false;
+
+  readonly backNav = signal<{
+    path: string;
+    queryParams: Record<string, string>;
+    label: string;
+  }>({ path: '/home', queryParams: {}, label: 'Volver a bandeja' });
 
   ngOnInit(): void {
+    const returnRaw = safeReturnTo(this.route.snapshot.queryParamMap.get('returnTo'));
+    if (returnRaw) {
+      const [path, qs] = returnRaw.split('?');
+      const queryParams: Record<string, string> = {};
+      if (qs) {
+        new URLSearchParams(qs).forEach((v, k) => {
+          queryParams[k] = v;
+        });
+      }
+      this.backNav.set({
+        path: path || '/home',
+        queryParams,
+        label: returnLabel(returnRaw),
+      });
+    }
+
     const id = this.route.snapshot.paramMap.get('id')!;
     this.load(id);
     this.casosService.getTecnicos().subscribe({
@@ -721,7 +947,11 @@ export class CasoDetalleComponent implements OnInit {
     if (!item) return;
     const existing = this.draftLineas.find((l) => l.itemCostoId === item.id);
     if (existing) {
-      existing.cantidad = Number(existing.cantidad) + 1;
+      this.draftLineas = this.draftLineas.map((l) =>
+        l.itemCostoId === item.id
+          ? { ...l, cantidad: Number(l.cantidad) + 1 }
+          : l,
+      );
     } else {
       this.draftLineas = [
         ...this.draftLineas,
@@ -735,19 +965,48 @@ export class CasoDetalleComponent implements OnInit {
       ];
     }
     this.itemToAddId = '';
+    this.programarGuardadoLineas();
   }
 
   quitarLinea(index: number): void {
     this.draftLineas = this.draftLineas.filter((_, i) => i !== index);
+    this.programarGuardadoLineas();
   }
 
-  guardarLineas(c: Caso): void {
+  cambiarCantidad(index: number, delta: number): void {
+    const linea = this.draftLineas[index];
+    if (!linea) return;
+    const next = Math.max(1, Math.round(Number(linea.cantidad) + delta));
+    this.draftLineas = this.draftLineas.map((l, i) =>
+      i === index ? { ...l, cantidad: next } : l,
+    );
+    this.programarGuardadoLineas();
+  }
+
+  private programarGuardadoLineas(): void {
+    const c = this.caso();
+    if (!c || !this.canArmarDocumento(c)) return;
+    if (this.lineasPersistTimer) clearTimeout(this.lineasPersistTimer);
+    this.lineasPersistTimer = setTimeout(() => this.persistirLineas(), 400);
+  }
+
+  private persistirLineas(): void {
+    const c = this.caso();
+    if (!c || !this.canArmarDocumento(c)) return;
     const lineas = this.normalizeDraftLineas();
-    if (!lineas.length) {
-      this.actionError.set('Agrega al menos una línea de cobro');
-      return;
-    }
-    this.run(() => this.casosService.setLineasCobro(c.id, lineas));
+    this.lineasSaving.set(true);
+    this.actionError.set(null);
+    this.casosService.setLineasCobro(c.id, lineas).subscribe({
+      next: (updated) => {
+        this.skipNextDraftSync = true;
+        this.caso.set(updated);
+        this.lineasSaving.set(false);
+      },
+      error: (err) => {
+        this.lineasSaving.set(false);
+        this.actionError.set(err?.error?.message ?? 'No se pudieron guardar las líneas');
+      },
+    });
   }
 
   descargarPdf(c: Caso): void {
@@ -830,18 +1089,29 @@ export class CasoDetalleComponent implements OnInit {
   }
 
   pedirMarcarEnviado(c: Caso): void {
-    if (!c.lineasCobro.length) {
-      this.actionError.set('Guarda líneas de cobro antes de marcar enviado');
+    if (!this.draftLineas.length && !c.lineasCobro.length) {
+      this.actionError.set('Agrega al menos un ítem de cobro antes de marcar enviado');
       return;
     }
+    const lineas = this.normalizeDraftLineas();
+    const total = lineas.reduce((s, l) => s + l.cantidad * l.precioUnitario, 0);
+    const items = lineas.map(
+      (l) =>
+        `· ${l.nombre} × ${l.cantidad} ${l.unidad} = ${(l.cantidad * l.precioUnitario).toLocaleString('es-CO')}`,
+    );
     this.abrirConfirmacion({
       kind: 'enviar',
       fromLabel: this.labelEstado('PendienteDocumentoCobro'),
       toLabel: this.labelEstado('PendienteConfirmacionAsegurado'),
-      lines: this.resumenCobro(c, [
+      lines: [
+        `Caso: ${c.titulo}`,
+        `Nº: ${c.numeroAseguradora} · ${c.aseguradora}`,
+        `Titular: ${c.titularNombre}`,
+        ...items,
+        `Total: ${total.toLocaleString('es-CO')} COP`,
         'Se marcará el documento oficial como enviado.',
         'Revisa ítems y total antes de continuar.',
-      ]),
+      ],
     });
   }
 
@@ -916,7 +1186,18 @@ export class CasoDetalleComponent implements OnInit {
         );
         break;
       case 'enviar':
-        this.run(() => this.casosService.enviarDocumento(c.id), afterClose);
+        // Asegura persistencia de draft antes de avanzar
+        this.lineasSaving.set(true);
+        this.casosService.setLineasCobro(c.id, this.normalizeDraftLineas()).subscribe({
+          next: () => {
+            this.lineasSaving.set(false);
+            this.run(() => this.casosService.enviarDocumento(c.id), afterClose);
+          },
+          error: (err) => {
+            this.lineasSaving.set(false);
+            this.actionError.set(err?.error?.message ?? 'No se pudieron guardar las líneas');
+          },
+        });
         break;
       case 'confirmar':
         this.run(() => this.casosService.confirmarAsegurado(c.id), afterClose);
@@ -991,6 +1272,10 @@ export class CasoDetalleComponent implements OnInit {
   }
 
   private syncDraftLineas(c: Caso): void {
+    if (this.skipNextDraftSync) {
+      this.skipNextDraftSync = false;
+      return;
+    }
     this.draftLineas = (c.lineasCobro ?? []).map((l) => ({ ...l }));
   }
 

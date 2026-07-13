@@ -1,21 +1,27 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { LucideArrowLeft, LucideExternalLink, LucidePlus } from '@lucide/angular';
 import { Subscription, catchError, debounceTime, distinctUntilChanged, filter, of, switchMap } from 'rxjs';
 import { CasosService } from '../../core/services/casos.service';
 import { GeoService, type GeoResult } from '../../core/services/geo.service';
 import { CIUDADES_BOGOTA_AREA } from '../../shared/ciudades-bogota';
+import { returnLabel, safeReturnTo } from '../../shared/nav-return';
+import { SkeletonComponent } from '../../shared/skeleton.component';
 
 @Component({
   selector: 'app-caso-nuevo',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, LucideArrowLeft, LucidePlus, LucideExternalLink, SkeletonComponent],
   template: `
     <div>
       <main class="mx-auto max-w-3xl px-6 py-8">
         <div class="mb-6 flex items-center justify-between gap-4">
-          <a routerLink="/home" class="btn-ghost">← Volver a bandeja</a>
+          <a [routerLink]="backNav().path" [queryParams]="backNav().queryParams" class="btn-back">
+            <svg lucideArrowLeft [size]="16"></svg>
+            {{ backNav().label }}
+          </a>
         </div>
 
         <h1 class="text-3xl font-semibold text-brand-ink">Crear nuevo caso</h1>
@@ -102,16 +108,15 @@ import { CIUDADES_BOGOTA_AREA } from '../../shared/ciudades-bogota';
           </label>
 
           @if (geoLoading()) {
-            <p class="text-sm text-slate-500">Ubicando en Google Maps…</p>
-          }
-          @if (geoError()) {
+            <app-skeleton variant="map-preview" />
+          } @else if (geoError()) {
             <p class="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{{ geoError() }}</p>
-          }
-          @if (geo(); as g) {
+          } @else if (geo()) {
             <div class="overflow-hidden rounded-lg border border-slate-200 bg-white">
               <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-3 py-2">
-                <p class="text-xs text-brand-soft line-clamp-2">{{ g.displayName }}</p>
-                <a class="text-xs font-semibold text-accent underline" [href]="g.mapLink" target="_blank" rel="noopener">
+                <p class="text-xs text-brand-soft line-clamp-2">{{ geo()!.displayName }}</p>
+                <a class="inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline" [href]="geo()!.mapLink" target="_blank" rel="noopener">
+                  <svg lucideExternalLink [size]="12"></svg>
                   Abrir en Google Maps
                 </a>
               </div>
@@ -142,7 +147,13 @@ import { CIUDADES_BOGOTA_AREA } from '../../shared/ciudades-bogota';
             class="btn-estado"
             [disabled]="loading() || form.invalid || !geo()"
           >
-            {{ loading() ? 'Creando…' : 'Crear caso' }}
+            @if (loading()) {
+              <span class="spinner"></span>
+              Creando…
+            } @else {
+              <svg lucidePlus [size]="16"></svg>
+              Crear caso
+            }
           </button>
           @if (!geo() && form.controls.direccion.value && form.controls.ciudad.value) {
             <p class="text-xs text-amber-700">Debes validar la dirección en el mapa antes de crear el caso.</p>
@@ -165,6 +176,24 @@ import { CIUDADES_BOGOTA_AREA } from '../../shared/ciudades-bogota';
         border-color: var(--accent);
         box-shadow: 0 0 0 2px rgb(15 118 110 / 0.2);
       }
+      .btn-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        border-radius: 0.375rem;
+        border: 1px solid #cbd5e1;
+        background: white;
+        padding: 0.5rem 0.9rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--brand-ink);
+        transition: background 0.15s, border-color 0.15s;
+      }
+      .btn-back:hover {
+        background: var(--surface-muted);
+        border-color: var(--action);
+        color: var(--action);
+      }
     `,
   ],
 })
@@ -173,6 +202,7 @@ export class CasoNuevoComponent implements OnInit, OnDestroy {
   private readonly geoService = inject(GeoService);
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly sanitizer = inject(DomSanitizer);
 
   readonly ciudades = CIUDADES_BOGOTA_AREA;
@@ -183,6 +213,11 @@ export class CasoNuevoComponent implements OnInit, OnDestroy {
   readonly geoError = signal<string | null>(null);
   readonly geo = signal<GeoResult | null>(null);
   readonly mapSafeUrl = signal<SafeResourceUrl | null>(null);
+  readonly backNav = signal<{
+    path: string;
+    queryParams: Record<string, string>;
+    label: string;
+  }>({ path: '/home', queryParams: {}, label: 'Volver a bandeja' });
 
   private geoSub?: Subscription;
 
@@ -199,6 +234,22 @@ export class CasoNuevoComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    const returnRaw = safeReturnTo(this.route.snapshot.queryParamMap.get('returnTo'));
+    if (returnRaw) {
+      const [path, qs] = returnRaw.split('?');
+      const queryParams: Record<string, string> = {};
+      if (qs) {
+        new URLSearchParams(qs).forEach((v, k) => {
+          queryParams[k] = v;
+        });
+      }
+      this.backNav.set({
+        path: path || '/home',
+        queryParams,
+        label: returnLabel(returnRaw),
+      });
+    }
+
     this.casos.getCategorias().subscribe({
       next: (cats) => this.categorias.set(cats),
       error: () => this.categorias.set(['Hogar', 'Apartamento', 'Oficina', 'Local comercial', 'Glass']),

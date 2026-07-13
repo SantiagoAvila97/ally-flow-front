@@ -10,6 +10,9 @@
   --surface-muted: #e8eef4;
   --accent: #0f766e;
   --accent-soft: #ccfbf1;
+  /* Azul de acción (botones generales) — más claro que brand-soft */
+  --action: #2f6fad;
+  --action-hover: #255a8f;
 }
 
 html,
@@ -28,11 +31,18 @@ body {
 }
 
 @layer components {
-  /** Acciones generales (guardar, PDF, maps, etc.) — azul marca */
+  /** Acciones generales (guardar, PDF, maps, etc.) — azul claro de acción */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-md bg-brand-soft px-4 py-2.5
-      text-sm font-semibold text-white transition hover:bg-brand
-      focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-soft;
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2.5
+      text-sm font-semibold text-white transition
+      focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2;
+    background-color: var(--action);
+  }
+  .btn-primary:hover {
+    background-color: var(--action-hover);
+  }
+  .btn-primary:focus-visible {
+    outline-color: var(--action);
   }
 
   /** Solo botones que cambian el estado del caso — verde */
@@ -49,5 +59,68 @@ body {
 
   .badge {
     @apply inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold tracking-wide;
+  }
+
+  /** Acciones icon-only (editar, eliminar, etc.) */
+  .icon-btn {
+    @apply inline-flex h-8 w-8 items-center justify-center rounded-md text-brand-soft
+      transition hover:bg-surface-muted hover:text-brand-ink
+      disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .icon-btn-danger {
+    @apply text-red-700 hover:bg-red-50 hover:text-red-800;
+  }
+
+  .btn-primary:disabled,
+  .btn-estado:disabled,
+  .btn-ghost:disabled {
+    @apply cursor-not-allowed opacity-60;
+  }
+
+  /** Spinner inline (acciones en botones) */
+  .spinner {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 9999px;
+    animation: spin 0.65s linear infinite;
+  }
+  .spinner-sm {
+    width: 0.85rem;
+    height: 0.85rem;
+    border-width: 1.5px;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /** Skeleton placeholders */
+  .skeleton {
+    @apply relative overflow-hidden rounded-md bg-slate-200/80;
+  }
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(255 255 255 / 0.55),
+      transparent
+    );
+    animation: skeletonShine 1.2s ease-in-out infinite;
+  }
+
+  @keyframes skeletonShine {
+    100% {
+      transform: translateX(100%);
+    }
   }
 }

@@ -7,6 +7,7 @@ import {
   ViewChild,
   signal,
 } from '@angular/core';
+import { LucideCheck, LucideEraser } from '@lucide/angular';
 
 /**
  * Pad de firma simple (canvas). Emite dataURL PNG al confirmar.
@@ -14,6 +15,7 @@ import {
 @Component({
   selector: 'app-signature-pad',
   standalone: true,
+  imports: [LucideEraser, LucideCheck],
   template: `
     <div class="space-y-2">
       <canvas
@@ -30,8 +32,12 @@ import {
         (touchend)="end()"
       ></canvas>
       <div class="flex gap-2">
-        <button type="button" class="btn-ghost !text-xs" (click)="clear()">Limpiar</button>
+        <button type="button" class="btn-ghost !text-xs" (click)="clear()">
+          <svg lucideEraser [size]="14"></svg>
+          Limpiar
+        </button>
         <button type="button" class="btn-primary !text-xs" (click)="confirm()" [disabled]="!dirty()">
+          <svg lucideCheck [size]="14"></svg>
           Usar firma
         </button>
       </div>

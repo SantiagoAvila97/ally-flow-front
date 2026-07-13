@@ -73,6 +73,7 @@ export class CasosService {
       .pipe(map((r) => r.data));
   }
 
+  /** Autosave silencioso de líneas de cobro. */
   setLineasCobro(id: string, lineas: LineaCobro[]): Observable<Caso> {
     return this.http
       .patch<ApiList<Caso>>(`${this.base}/${id}/lineas-cobro`, { lineas })

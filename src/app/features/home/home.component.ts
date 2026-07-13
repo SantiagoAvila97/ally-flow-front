@@ -1,19 +1,50 @@
 import { DatePipe, NgClass } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import {
+  LucideArrowLeft,
+  LucideChevronRight,
+  LucideCircleQuestionMark,
+  LucideFunnelX,
+  LucidePlus,
+  LucideX,
+} from '@lucide/angular';
 import { AuthService } from '../../core/services/auth.service';
 import { CasosService } from '../../core/services/casos.service';
 import type { Caso, EstadoCaso } from '../../core/models/caso.model';
 import { ESTADOS_CASO, ESTADOS_OCULTOS_TECNICO } from '../../core/models/caso.model';
+import { returnLabel, safeReturnTo } from '../../shared/nav-return';
+import { SkeletonComponent } from '../../shared/skeleton.component';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [DatePipe, NgClass, FormsModule, RouterLink],
+  imports: [
+    DatePipe,
+    NgClass,
+    FormsModule,
+    RouterLink,
+    LucideArrowLeft,
+    LucidePlus,
+    LucideFunnelX,
+    LucideCircleQuestionMark,
+    LucideX,
+    LucideChevronRight,
+    SkeletonComponent,
+  ],
   template: `
     <div>
       <main class="mx-auto max-w-6xl px-6 py-8">
+        @if (returnTo(); as back) {
+          <div class="mb-5">
+            <a [routerLink]="back.path" [queryParams]="back.queryParams" class="btn-back">
+              <svg lucideArrowLeft [size]="16"></svg>
+              {{ back.label }}
+            </a>
+          </div>
+        }
+
         <div class="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 class="text-3xl font-semibold text-brand-ink">Bandeja de entrada</h1>
@@ -22,12 +53,18 @@ import { ESTADOS_CASO, ESTADOS_OCULTOS_TECNICO } from '../../core/models/caso.mo
           <div class="flex flex-wrap items-center gap-3">
             <p class="text-sm text-slate-500">{{ casosFiltrados().length }} de {{ casos().length }}</p>
             @if (canCreate()) {
-              <a routerLink="/casos/nuevo" class="btn-estado">Crear nuevo caso</a>
+              <a routerLink="/casos/nuevo" [queryParams]="casoLinkParams()" class="btn-estado">
+                <svg lucidePlus [size]="16"></svg>
+                Crear nuevo caso
+              </a>
             }
           </div>
         </div>
 
         <!-- Filtros avanzados (todos los roles) -->
+        @if (loading()) {
+          <app-skeleton variant="bandeja-filters" />
+        } @else {
         <div class="mt-6 grid gap-3 rounded-lg border border-slate-200 bg-white/80 p-4 sm:grid-cols-2 lg:grid-cols-4">
           <label class="block sm:col-span-2 lg:col-span-2">
             <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -63,12 +100,12 @@ import { ESTADOS_CASO, ESTADOS_OCULTOS_TECNICO } from '../../core/models/caso.mo
               Estado
               <button
                 type="button"
-                class="inline-flex h-5 w-5 items-center justify-center rounded-full border border-accent/40 bg-accent-soft text-[11px] font-bold text-accent transition hover:bg-accent hover:text-white"
+                class="inline-flex h-5 w-5 items-center justify-center rounded-full border border-accent/40 bg-accent-soft text-accent transition hover:bg-accent hover:text-white"
                 title="Ver guía de estados"
                 aria-label="Información de estados del flujo"
                 (click)="mostrarGuiaEstados.set(true)"
               >
-                !
+                <svg lucideCircleQuestionMark [size]="12"></svg>
               </button>
             </span>
             <select
@@ -117,10 +154,12 @@ import { ESTADOS_CASO, ESTADOS_OCULTOS_TECNICO } from '../../core/models/caso.mo
 
           <div class="flex items-end sm:col-span-2 lg:col-span-2">
             <button type="button" class="btn-ghost border border-slate-200" (click)="limpiarFiltros()">
+              <svg lucideFunnelX [size]="15"></svg>
               Limpiar filtros
             </button>
           </div>
         </div>
+        }
 
         <!-- Guía de estados (timeline informativa) -->
         @if (mostrarGuiaEstados()) {
@@ -144,8 +183,14 @@ import { ESTADOS_CASO, ESTADOS_OCULTOS_TECNICO } from '../../core/models/caso.mo
                     Flujo del caso de punta a punta. Cada estado indica qué pasa y quién actúa.
                   </p>
                 </div>
-                <button type="button" class="btn-ghost !px-2" (click)="mostrarGuiaEstados.set(false)">
-                  Cerrar
+                <button
+                  type="button"
+                  class="icon-btn"
+                  (click)="mostrarGuiaEstados.set(false)"
+                  title="Cerrar"
+                  aria-label="Cerrar"
+                >
+                  <svg lucideX [size]="18"></svg>
                 </button>
               </div>
 
@@ -179,7 +224,7 @@ import { ESTADOS_CASO, ESTADOS_OCULTOS_TECNICO } from '../../core/models/caso.mo
         }
 
         @if (loading()) {
-          <p class="mt-12 text-slate-500">Cargando casos…</p>
+          <app-skeleton variant="bandeja-table" [rows]="6" />
         } @else if (error()) {
           <p class="mt-12 rounded-md bg-red-50 px-4 py-3 text-red-700">{{ error() }}</p>
         } @else if (casosFiltrados().length === 0) {
@@ -220,15 +265,24 @@ import { ESTADOS_CASO, ESTADOS_OCULTOS_TECNICO } from '../../core/models/caso.mo
                       }}</span>
                     </td>
                     <td class="px-4 py-3 text-brand-soft">{{ caso.ciudad }}</td>
-                    <td class="px-4 py-3 text-slate-500">
-                      {{ caso.updatedAt | date: 'dd/MM/yyyy HH:mm' }}
+                    <td class="px-4 py-3">
+                      <div class="leading-tight">
+                        <p class="text-sm font-semibold text-brand-ink tabular-nums">
+                          {{ caso.updatedAt | date: 'dd/MM/yyyy' }}
+                        </p>
+                        <p class="text-xs font-medium text-brand-soft tabular-nums">
+                          {{ caso.updatedAt | date: 'HH:mm' }}
+                        </p>
+                      </div>
                     </td>
                     <td class="px-4 py-3">
                       <a
                         [routerLink]="['/casos', caso.id]"
+                        [queryParams]="casoLinkParams()"
                         class="btn-primary !px-3 !py-1.5 !text-xs"
                       >
                         {{ isTecnico() ? 'Ver / gestionar' : 'Abrir' }}
+                        <svg lucideChevronRight [size]="14"></svg>
                       </a>
                     </td>
                   </tr>
@@ -240,10 +294,41 @@ import { ESTADOS_CASO, ESTADOS_OCULTOS_TECNICO } from '../../core/models/caso.mo
       </main>
     </div>
   `,
+  styles: [
+    `
+      .btn-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        border-radius: 0.375rem;
+        border: 1px solid #e2e8f0;
+        background: white;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--brand-soft);
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
+      }
+      .btn-back:hover {
+        background: var(--surface-muted);
+        border-color: var(--action);
+        color: var(--action);
+      }
+    `,
+  ],
 })
 export class HomeComponent implements OnInit {
   readonly auth = inject(AuthService);
   private readonly casosService = inject(CasosService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+
+  /** Origen (ej. Balance) para no perder el hilo al navegar. */
+  readonly returnTo = signal<{
+    path: string;
+    queryParams: Record<string, string>;
+    label: string;
+  } | null>(null);
 
   /** Estados visibles en el filtro según rol (técnico no ve ciclo comercial). */
   readonly estadosFiltro = computed(() => {
@@ -260,6 +345,9 @@ export class HomeComponent implements OnInit {
 
   readonly busqueda = signal('');
   readonly filtroEstado = signal('');
+  readonly filtroComercial = signal(false);
+  /** Solo confirmación + recepción de pago (nos deben). */
+  readonly filtroNosDeben = signal(false);
   readonly filtroCategoria = signal('');
   readonly filtroCiudad = signal('');
   readonly filtroAseguradora = signal('');
@@ -360,6 +448,21 @@ export class HomeComponent implements OnInit {
     const aseguradora = this.filtroAseguradora();
 
     return this.casos().filter((c) => {
+      if (this.filtroComercial()) {
+        const comercial: EstadoCaso[] = [
+          'PendienteDocumentoCobro',
+          'PendienteConfirmacionAsegurado',
+          'PendienteRecepcionPago',
+        ];
+        if (!comercial.includes(c.estado)) return false;
+      }
+      if (this.filtroNosDeben()) {
+        const nosDeben: EstadoCaso[] = [
+          'PendienteConfirmacionAsegurado',
+          'PendienteRecepcionPago',
+        ];
+        if (!nosDeben.includes(c.estado)) return false;
+      }
       if (estado && c.estado !== estado) return false;
       if (categoria && c.categoriaServicio !== categoria) return false;
       if (ciudad && c.ciudad !== ciudad) return false;
@@ -397,6 +500,34 @@ export class HomeComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    const qp = this.route.snapshot.queryParamMap;
+    const back = safeReturnTo(qp.get('returnTo'));
+    if (back) {
+      const [path, qs] = back.split('?');
+      const queryParams: Record<string, string> = {};
+      if (qs) {
+        new URLSearchParams(qs).forEach((v, k) => {
+          queryParams[k] = v;
+        });
+      }
+      this.returnTo.set({
+        path: path || '/home',
+        queryParams,
+        label: returnLabel(back),
+      });
+    }
+
+    const estado = qp.get('estado');
+    if (estado && ESTADOS_CASO.includes(estado as EstadoCaso)) {
+      this.filtroEstado.set(estado);
+    }
+    if (qp.get('vista') === 'comercial') {
+      this.filtroComercial.set(true);
+    }
+    if (qp.get('vista') === 'nos-deben') {
+      this.filtroNosDeben.set(true);
+    }
+
     this.casosService.list().subscribe({
       next: (data) => {
         this.casos.set(data);
@@ -417,9 +548,16 @@ export class HomeComponent implements OnInit {
     });
   }
 
+  /** Al abrir un caso, volver a esta bandeja (con filtros) y, si aplica, al origen. */
+  casoLinkParams(): Record<string, string> {
+    return { returnTo: this.router.url };
+  }
+
   limpiarFiltros(): void {
     this.busqueda.set('');
     this.filtroEstado.set('');
+    this.filtroComercial.set(false);
+    this.filtroNosDeben.set(false);
     this.filtroCategoria.set('');
     this.filtroCiudad.set('');
     this.filtroAseguradora.set('');
