@@ -10,17 +10,16 @@ interface ApiList<T> {
 
 export interface AseguradoraInput {
   nombre: string;
-  nit?: string | null;
-  personaResponsable?: string | null;
-  contactoCobros?: string | null;
-  whatsapp?: string | null;
+  nit: string;
+  personaResponsable: string;
+  contactoCobros: string;
+  whatsapp: string;
   activa?: boolean;
 }
 
 /**
- * Catálogos de referencia (aseguradoras, ciudades, categorías).
- * Lectura: una sola vez por sesión.
- * Mutaciones de aseguradoras (ADMIN): invalidan el cache.
+ * Catálogos de referencia (aseguradoras, ciudades, categorías de servicio).
+ * Lectura cacheada por sesión; invalidar tras mutar aseguradoras o categorías (Tarifas).
  */
 @Injectable({ providedIn: 'root' })
 export class CatalogosService {

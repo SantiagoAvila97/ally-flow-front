@@ -13,6 +13,7 @@ import type {
   PlantillaPdfCobro,
   ActualizarPlantillaPdfPayload,
 } from '../models/costo.model';
+import { CatalogosService } from './catalogos.service';
 
 interface ApiList<T> {
   data: T;
@@ -21,6 +22,7 @@ interface ApiList<T> {
 @Injectable({ providedIn: 'root' })
 export class CostosService {
   private readonly http = inject(HttpClient);
+  private readonly catalogos = inject(CatalogosService);
   private readonly base = `${environment.apiUrl}/costos`;
 
   listTree(): Observable<CategoriaConItems[]> {
@@ -28,19 +30,29 @@ export class CostosService {
   }
 
   createCategoria(payload: CrearCategoriaPayload): Observable<CategoriaCosto> {
-    return this.http
-      .post<ApiList<CategoriaCosto>>(`${this.base}/categorias`, payload)
-      .pipe(map((r) => r.data));
+    return this.http.post<ApiList<CategoriaCosto>>(`${this.base}/categorias`, payload).pipe(
+      map((r) => {
+        this.catalogos.invalidate();
+        return r.data;
+      }),
+    );
   }
 
   updateCategoria(id: string, payload: ActualizarCategoriaPayload): Observable<CategoriaCosto> {
-    return this.http
-      .patch<ApiList<CategoriaCosto>>(`${this.base}/categorias/${id}`, payload)
-      .pipe(map((r) => r.data));
+    return this.http.patch<ApiList<CategoriaCosto>>(`${this.base}/categorias/${id}`, payload).pipe(
+      map((r) => {
+        this.catalogos.invalidate();
+        return r.data;
+      }),
+    );
   }
 
   deleteCategoria(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.base}/categorias/${id}`);
+    return this.http.delete<void>(`${this.base}/categorias/${id}`).pipe(
+      map(() => {
+        this.catalogos.invalidate();
+      }),
+    );
   }
 
   createItem(payload: CrearItemPayload): Observable<ItemCosto> {

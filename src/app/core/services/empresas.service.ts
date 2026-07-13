@@ -63,4 +63,20 @@ export class EmpresasService {
   delete(id: string): Observable<{ ok: boolean }> {
     return this.http.delete<{ ok: boolean }>(`${environment.apiUrl}/empresas/${id}`);
   }
+
+  /** Restaura tenant DEMO a datos seed (casos, tarifas, clientes, usuarios demo). */
+  resetDemo(): Observable<{ ok: boolean; casos: number; users: number }> {
+    return this.http.post<{ ok: boolean; casos: number; users: number }>(
+      `${environment.apiUrl}/empresas/demo/reset`,
+      {},
+    );
+  }
+
+  /** Limpia casos/tarifas/clientes/plantillas de mi empresa (OWNER). */
+  clearMineData(): Observable<{ ok: boolean; empresaId: string; empresaNombre: string }> {
+    return this.http.post<{ ok: boolean; empresaId: string; empresaNombre: string }>(
+      `${environment.apiUrl}/empresas/me/clear-data`,
+      {},
+    );
+  }
 }

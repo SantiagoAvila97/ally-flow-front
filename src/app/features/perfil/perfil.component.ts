@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
+import { CatalogosService } from '../../core/services/catalogos.service';
 import { EmpresasService, type Empresa } from '../../core/services/empresas.service';
 import {
   generateStrongPassword,
@@ -9,11 +10,18 @@ import {
   type PasswordStrength,
 } from '../../core/utils/password';
 import { readSquareLogoFile } from '../../core/utils/logo-file';
+import { environment } from '../../../environments/environment';
+import {
+  ConfirmDialogComponent,
+  type ConfirmDialogPayload,
+} from '../../shared/confirm-dialog.component';
+
+const EMPRESA_DEMO_ID = 'emp-demo';
 
 @Component({
   selector: 'app-perfil',
   standalone: true,
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, ConfirmDialogComponent],
   template: `
     <div class="mx-auto max-w-lg px-6 py-10">
       <header class="mb-8">
@@ -91,6 +99,57 @@ import { readSquareLogoFile } from '../../core/utils/logo-file';
         </section>
       }
 
+      @if (canClearData()) {
+        <section class="mb-10 border-b border-slate-200 pb-10">
+          <h2 class="mb-1 text-lg font-semibold text-brand-ink">Limpiar data</h2>
+          <p class="mb-4 text-sm text-brand-soft">
+            Elimina casos, tarifas, clientes y plantillas de
+            <span class="font-semibold text-brand-ink">{{
+              empresa()?.nombre || auth.currentUser?.empresaNombre || 'tu empresa'
+            }}</span
+            >. Conserva usuarios y logo. Solo disponible en QA / local.
+          </p>
+          @if (clearError()) {
+            <p class="mb-3 text-sm text-red-600">{{ clearError() }}</p>
+          }
+          @if (clearOk()) {
+            <p class="mb-3 text-sm font-medium text-emerald-700">{{ clearOk() }}</p>
+          }
+          <button
+            type="button"
+            class="btn-ghost border border-red-200 text-red-800 hover:bg-red-50 disabled:opacity-50"
+            [disabled]="dataBusy()"
+            (click)="pedirClearData()"
+          >
+            {{ clearBusy() ? 'Limpiando…' : 'Limpiar data' }}
+          </button>
+        </section>
+      }
+
+      @if (canResetDemo()) {
+        <section class="mb-10 border-b border-slate-200 pb-10">
+          <h2 class="mb-1 text-lg font-semibold text-brand-ink">Datos DEMO</h2>
+          <p class="mb-4 text-sm text-brand-soft">
+            Restaura casos, tarifas, clientes, plantilla PDF y usuarios demo a los valores por
+            defecto. No afecta Full Soluciones ni otras empresas. Solo QA / local.
+          </p>
+          @if (demoError()) {
+            <p class="mb-3 text-sm text-red-600">{{ demoError() }}</p>
+          }
+          @if (demoOk()) {
+            <p class="mb-3 text-sm font-medium text-emerald-700">{{ demoOk() }}</p>
+          }
+          <button
+            type="button"
+            class="btn-ghost border border-amber-300 text-amber-900 hover:bg-amber-50 disabled:opacity-50"
+            [disabled]="dataBusy()"
+            (click)="pedirResetDemo()"
+          >
+            {{ demoResetting() ? 'Reiniciando…' : 'Reiniciar datos DEMO' }}
+          </button>
+        </section>
+      }
+
       <section>
         <h2 class="mb-4 text-lg font-semibold text-brand-ink">Cambiar contraseña</h2>
         <form class="grid gap-4" [formGroup]="form" (ngSubmit)="onSubmit()">
@@ -159,6 +218,13 @@ import { readSquareLogoFile } from '../../core/utils/logo-file';
         </form>
       </section>
     </div>
+
+    <app-confirm-dialog
+      [payload]="confirmDialog()"
+      [busy]="dataBusy()"
+      (cancelled)="cerrarConfirmDialog()"
+      (confirmed)="ejecutarConfirmDialog()"
+    />
   `,
   styles: `
     .field {
@@ -188,6 +254,10 @@ export class PerfilComponent implements OnInit {
   readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly empresasApi = inject(EmpresasService);
+  private readonly catalogos = inject(CatalogosService);
+
+  /** Limpiar / reiniciar DEMO: nunca en build PROD. */
+  private readonly qaDataTools = environment.appEnv !== 'prod';
 
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
@@ -201,15 +271,40 @@ export class PerfilComponent implements OnInit {
   readonly logoError = signal<string | null>(null);
   readonly logoOk = signal(false);
 
+  readonly demoResetting = signal(false);
+  readonly demoError = signal<string | null>(null);
+  readonly demoOk = signal<string | null>(null);
+  readonly clearBusy = signal(false);
+  readonly clearError = signal<string | null>(null);
+  readonly clearOk = signal<string | null>(null);
+  readonly confirmDialog = signal<ConfirmDialogPayload | null>(null);
+  private confirmAction: (() => void) | null = null;
+
   readonly form = this.fb.nonNullable.group({
     currentPassword: ['', [Validators.required]],
     newPassword: ['', [Validators.required, Validators.minLength(8)]],
     confirmPassword: ['', [Validators.required, Validators.minLength(8)]],
   });
 
+  dataBusy(): boolean {
+    return this.demoResetting() || this.clearBusy();
+  }
+
   canEditLogo(): boolean {
     const u = this.auth.currentUser;
     return Boolean(u?.role === 'ADMIN' && u.esOwner);
+  }
+
+  canClearData(): boolean {
+    return this.qaDataTools && this.canEditLogo();
+  }
+
+  canResetDemo(): boolean {
+    if (!this.qaDataTools) return false;
+    const u = this.auth.currentUser;
+    if (!u) return false;
+    if (u.role === 'SUPER_ADMIN') return true;
+    return Boolean(u.role === 'ADMIN' && u.esOwner && u.empresaId === EMPRESA_DEMO_ID);
   }
 
   ngOnInit(): void {
@@ -217,6 +312,96 @@ export class PerfilComponent implements OnInit {
     this.empresasApi.me().subscribe({
       next: (e) => this.empresa.set(e),
       error: () => this.empresa.set(null),
+    });
+  }
+
+  pedirClearData(): void {
+    const nombre = this.empresa()?.nombre || this.auth.currentUser?.empresaNombre || 'la empresa';
+    this.clearError.set(null);
+    this.clearOk.set(null);
+    this.confirmDialog.set({
+      title: '¿Limpiar data?',
+      lines: [
+        `Empresa: ${nombre}`,
+        'Se eliminan casos, tarifas, clientes y plantillas.',
+        'Se conservan usuarios y logo.',
+      ],
+      confirmLabel: 'Limpiar data',
+      danger: true,
+    });
+    this.confirmAction = () => this.runClearData();
+  }
+
+  pedirResetDemo(): void {
+    this.demoError.set(null);
+    this.demoOk.set(null);
+    this.confirmDialog.set({
+      title: '¿Reiniciar datos DEMO?',
+      lines: [
+        'Se restauran casos, tarifas, clientes, plantilla y usuarios demo.',
+        'Se pierden los cambios hechos en DEMO.',
+        'Full Soluciones y otras empresas no se tocan.',
+      ],
+      confirmLabel: 'Reiniciar DEMO',
+      danger: true,
+    });
+    this.confirmAction = () => this.runResetDemo();
+  }
+
+  cerrarConfirmDialog(): void {
+    this.confirmDialog.set(null);
+    this.confirmAction = null;
+  }
+
+  ejecutarConfirmDialog(): void {
+    const action = this.confirmAction;
+    this.cerrarConfirmDialog();
+    action?.();
+  }
+
+  private runClearData(): void {
+    this.clearBusy.set(true);
+    this.clearError.set(null);
+    this.clearOk.set(null);
+    this.empresasApi.clearMineData().subscribe({
+      next: (r) => {
+        this.clearBusy.set(false);
+        this.catalogos.invalidate();
+        this.clearOk.set(`Data de ${r.empresaNombre} limpiada.`);
+      },
+      error: (err) => {
+        this.clearBusy.set(false);
+        this.clearError.set(err?.error?.message ?? 'No se pudo limpiar la data');
+      },
+    });
+  }
+
+  private runResetDemo(): void {
+    this.demoResetting.set(true);
+    this.demoError.set(null);
+    this.demoOk.set(null);
+    this.empresasApi.resetDemo().subscribe({
+      next: (r) => {
+        this.demoResetting.set(false);
+        this.catalogos.invalidate();
+        this.demoOk.set(
+          `DEMO restaurado: ${r.casos} casos y ${r.users} usuarios por defecto.`,
+        );
+        if (this.canEditLogo()) {
+          this.empresasApi.me().subscribe({
+            next: (e) => {
+              this.empresa.set(e);
+              window.dispatchEvent(
+                new CustomEvent('ally-empresa-logo', { detail: e.logoDataUrl }),
+              );
+            },
+          });
+        }
+      },
+      error: (err) => {
+        this.demoResetting.set(false);
+        this.demoError.set(err?.error?.message ?? 'No se pudo reiniciar DEMO');
+      },
     });
   }
 

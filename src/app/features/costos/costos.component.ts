@@ -77,8 +77,8 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
         <div>
           <h1 class="text-3xl font-semibold text-brand-ink">Admin</h1>
           <p class="mt-1 text-brand-soft/80">
-            Catálogos y tarifas de {{ auth.currentUser?.empresaNombre }}: costos, factura de cobro y
-            clientes.
+            Catálogos y tarifas de {{ auth.currentUser?.empresaNombre }}: categorías de caso, ítems de
+            costo, factura de cobro y clientes.
           </p>
         </div>
         @if (tab() === 'tarifas') {
@@ -149,20 +149,26 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                       <input class="field" [(ngModel)]="plantillaForm.razonSocial" name="razon" required />
                     </label>
                     <label class="block">
-                      <span class="mb-1 block text-sm font-medium">NIT</span>
-                      <input class="field" [(ngModel)]="plantillaForm.nit" name="nit" />
+                      <span class="mb-1 block text-sm font-medium">NIT *</span>
+                      <input class="field" [(ngModel)]="plantillaForm.nit" name="nit" required />
                     </label>
                     <label class="block">
-                      <span class="mb-1 block text-sm font-medium">Ciudad</span>
-                      <input class="field" [(ngModel)]="plantillaForm.ciudad" name="ciudad" />
+                      <span class="mb-1 block text-sm font-medium">Ciudad *</span>
+                      <input class="field" [(ngModel)]="plantillaForm.ciudad" name="ciudad" required />
                     </label>
                     <label class="block">
-                      <span class="mb-1 block text-sm font-medium">Teléfono</span>
-                      <input class="field" [(ngModel)]="plantillaForm.telefono" name="tel" />
+                      <span class="mb-1 block text-sm font-medium">Teléfono *</span>
+                      <input class="field" [(ngModel)]="plantillaForm.telefono" name="tel" required />
                     </label>
                     <label class="block">
-                      <span class="mb-1 block text-sm font-medium">Email</span>
-                      <input class="field" [(ngModel)]="plantillaForm.email" name="email" />
+                      <span class="mb-1 block text-sm font-medium">Email *</span>
+                      <input
+                        class="field"
+                        type="email"
+                        [(ngModel)]="plantillaForm.email"
+                        name="email"
+                        required
+                      />
                     </label>
                     <label class="block">
                       <span class="mb-1 block text-sm font-medium">Color acento *</span>
@@ -174,12 +180,14 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                           (ngModelChange)="onColorPicker($event)"
                           name="colorPicker"
                           title="Elegir color"
+                          required
                         />
                         <input
                           class="field font-mono"
                           [(ngModel)]="plantillaForm.colorAcento"
                           name="color"
                           placeholder="#0f766e"
+                          required
                         />
                       </div>
                       <p class="mt-1 text-[11px] text-slate-500">
@@ -187,15 +195,21 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                       </p>
                     </label>
                     <label class="block sm:col-span-2">
-                      <span class="mb-1 block text-sm font-medium">Título del documento</span>
-                      <input class="field" [(ngModel)]="plantillaForm.textoHeader" name="header" />
+                      <span class="mb-1 block text-sm font-medium">Título del documento *</span>
+                      <input
+                        class="field"
+                        [(ngModel)]="plantillaForm.textoHeader"
+                        name="header"
+                        required
+                      />
                     </label>
                     <label class="block sm:col-span-2">
-                      <span class="mb-1 block text-sm font-medium">Texto pie</span>
+                      <span class="mb-1 block text-sm font-medium">Texto pie *</span>
                       <textarea
                         class="field min-h-[72px]"
                         [(ngModel)]="plantillaForm.textoFooter"
                         name="footer"
+                        required
                       ></textarea>
                     </label>
                   </div>
@@ -500,8 +514,13 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
       } @else if (loading()) {
         <app-skeleton variant="costos-tarifas" />
       } @else {
+        <p class="mt-6 text-sm text-brand-soft/80">
+          Las <span class="font-medium text-brand-ink">categorías</span> aparecen al crear un caso.
+          Los <span class="font-medium text-brand-ink">ítems</span> de cada una son las tarifas que
+          se usan al armar el cobro.
+        </p>
         <!-- Category chips -->
-        <div class="mt-6 flex flex-wrap gap-2">
+        <div class="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
             class="chip"
@@ -672,12 +691,13 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                 />
               </label>
               <label class="block">
-                <span class="mb-1 block text-sm font-medium">Descripción</span>
+                <span class="mb-1 block text-sm font-medium">Descripción *</span>
                 <input
                   class="field"
                   [(ngModel)]="catForm.descripcion"
                   name="catDesc"
-                  placeholder="Opcional"
+                  required
+                  placeholder="Ej. Tuberías, destapes y fugas"
                 />
               </label>
               <div class="flex justify-end gap-2 pt-2">
@@ -727,12 +747,13 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                 />
               </label>
               <label class="block">
-                <span class="mb-1 block text-sm font-medium">Descripción</span>
+                <span class="mb-1 block text-sm font-medium">Descripción *</span>
                 <input
                   class="field"
                   [(ngModel)]="itemForm.descripcion"
                   name="itemDesc"
-                  placeholder="Opcional"
+                  required
+                  placeholder="Qué incluye el ítem"
                 />
               </label>
               <div class="grid gap-4 sm:grid-cols-3">
@@ -759,8 +780,8 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                   />
                 </label>
                 <label class="block">
-                  <span class="mb-1 block text-sm font-medium">Unidad</span>
-                  <select class="field" [(ngModel)]="itemForm.unidad" name="itemUnidad">
+                  <span class="mb-1 block text-sm font-medium">Unidad *</span>
+                  <select class="field" [(ngModel)]="itemForm.unidad" name="itemUnidad" required>
                     <option value="und">und</option>
                     <option value="metro">metro</option>
                     <option value="ml">ml</option>
@@ -805,34 +826,43 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                 <input class="field" [(ngModel)]="catalogForm.nombre" name="catNombre" required />
               </label>
               <label class="block">
-                <span class="mb-1 block text-sm font-medium">NIT</span>
-                <input class="field" [(ngModel)]="catalogForm.nit" name="catNit" placeholder="Opcional" />
+                <span class="mb-1 block text-sm font-medium">NIT *</span>
+                <input
+                  class="field"
+                  [(ngModel)]="catalogForm.nit"
+                  name="catNit"
+                  required
+                  placeholder="NIT del cliente"
+                />
               </label>
               <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Contactos</p>
               <label class="block">
-                <span class="mb-1 block text-sm font-medium">Persona responsable</span>
+                <span class="mb-1 block text-sm font-medium">Persona responsable *</span>
                 <input
                   class="field"
                   [(ngModel)]="catalogForm.personaResponsable"
                   name="catResponsable"
+                  required
                   placeholder="Nombre del contacto"
                 />
               </label>
               <label class="block">
-                <span class="mb-1 block text-sm font-medium">Contacto cobros / dudas</span>
+                <span class="mb-1 block text-sm font-medium">Contacto cobros / dudas *</span>
                 <input
                   class="field"
                   [(ngModel)]="catalogForm.contactoCobros"
                   name="catCobros"
+                  required
                   placeholder="Email o teléfono para cobros"
                 />
               </label>
               <label class="block">
-                <span class="mb-1 block text-sm font-medium">WhatsApp</span>
+                <span class="mb-1 block text-sm font-medium">WhatsApp *</span>
                 <input
                   class="field"
                   [(ngModel)]="catalogForm.whatsapp"
                   name="catWhatsapp"
+                  required
                   placeholder="+57 300 000 0000"
                 />
               </label>
@@ -1184,16 +1214,25 @@ export class CostosComponent implements OnInit {
   }
 
   saveCatalog(): void {
-    if (!this.catalogModal() || !this.catalogForm.nombre.trim()) return;
+    if (!this.catalogModal()) return;
+    const nombre = this.catalogForm.nombre.trim();
+    const nit = this.catalogForm.nit.trim();
+    const personaResponsable = this.catalogForm.personaResponsable.trim();
+    const contactoCobros = this.catalogForm.contactoCobros.trim();
+    const whatsapp = this.catalogForm.whatsapp.trim();
+    if (!nombre || !nit || !personaResponsable || !contactoCobros || !whatsapp) {
+      this.error.set('Completa todos los campos del cliente');
+      return;
+    }
     this.saving.set(true);
     this.error.set(null);
     const id = this.editingCatalogId();
     const payload = {
-      nombre: this.catalogForm.nombre.trim(),
-      nit: this.catalogForm.nit.trim() || null,
-      personaResponsable: this.catalogForm.personaResponsable.trim() || null,
-      contactoCobros: this.catalogForm.contactoCobros.trim() || null,
-      whatsapp: this.catalogForm.whatsapp.trim() || null,
+      nombre,
+      nit,
+      personaResponsable,
+      contactoCobros,
+      whatsapp,
       activa: this.catalogForm.activa,
     };
     const req = id
@@ -1269,8 +1308,27 @@ export class CostosComponent implements OnInit {
     });
   }
 
+  private plantillaCabeceraCompleta(): boolean {
+    const f = this.plantillaForm;
+    if (!f) return false;
+    return Boolean(
+      f.razonSocial?.trim() &&
+        f.nit?.trim() &&
+        f.ciudad?.trim() &&
+        f.telefono?.trim() &&
+        f.email?.trim() &&
+        f.colorAcento?.trim() &&
+        f.textoHeader?.trim() &&
+        f.textoFooter?.trim(),
+    );
+  }
+
   savePlantilla(): void {
     if (!this.plantillaForm) return;
+    if (!this.plantillaCabeceraCompleta()) {
+      this.error.set('Completa todos los campos de la cabecera de la factura');
+      return;
+    }
     this.saving.set(true);
     this.error.set(null);
     const scope = this.plantillaScopeId() || null;
@@ -1431,13 +1489,15 @@ export class CostosComponent implements OnInit {
   }
 
   saveCategoria(): void {
-    if (!this.catForm.nombre.trim()) return;
+    const nombre = this.catForm.nombre.trim();
+    const descripcion = this.catForm.descripcion.trim();
+    if (!nombre || !descripcion) {
+      this.error.set('Nombre y descripción de la categoría son obligatorios');
+      return;
+    }
     this.saving.set(true);
     this.error.set(null);
-    const payload = {
-      nombre: this.catForm.nombre.trim(),
-      descripcion: this.catForm.descripcion.trim(),
-    };
+    const payload = { nombre, descripcion };
     const id = this.editingCatId();
     const req = id
       ? this.costos.updateCategoria(id, payload)
@@ -1524,18 +1584,27 @@ export class CostosComponent implements OnInit {
   }
 
   saveItem(): void {
-    if (!this.itemForm.nombre.trim() || !this.itemForm.categoriaId) return;
-    if (this.itemForm.costoInterno == null || this.itemForm.precioSugerido == null) return;
+    const nombre = this.itemForm.nombre.trim();
+    const descripcion = this.itemForm.descripcion.trim();
+    const unidad = this.itemForm.unidad.trim();
+    if (!nombre || !descripcion || !unidad || !this.itemForm.categoriaId) {
+      this.error.set('Completa todos los campos del ítem');
+      return;
+    }
+    if (this.itemForm.costoInterno == null || this.itemForm.precioSugerido == null) {
+      this.error.set('Costo interno y precio sugerido son obligatorios');
+      return;
+    }
 
     this.saving.set(true);
     this.error.set(null);
     const payload = {
       categoriaId: this.itemForm.categoriaId,
-      nombre: this.itemForm.nombre.trim(),
-      descripcion: this.itemForm.descripcion.trim(),
+      nombre,
+      descripcion,
       costoInterno: Number(this.itemForm.costoInterno),
       precioSugerido: Number(this.itemForm.precioSugerido),
-      unidad: this.itemForm.unidad,
+      unidad,
       activo: this.itemForm.activo,
     };
     const id = this.editingItemId();

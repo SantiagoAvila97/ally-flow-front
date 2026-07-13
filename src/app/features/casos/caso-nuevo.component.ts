@@ -81,7 +81,7 @@ import { SkeletonComponent } from '../../shared/skeleton.component';
                 />
               </label>
               <label class="block">
-                <span class="mb-1 block text-sm font-medium">Teléfono *</span>
+                <span class="mb-1 block text-sm font-medium">Celular *</span>
                 <input class="field" formControlName="titularTelefono" placeholder="+57 300 123 4567" />
               </label>
             </div>
@@ -98,13 +98,22 @@ import { SkeletonComponent } from '../../shared/skeleton.component';
                 <span class="mt-1 block text-xs text-slate-500">Bogotá y municipios aledaños</span>
               </label>
               <label class="block">
-                <span class="mb-1 block text-sm font-medium">Categoría de servicio *</span>
-                <select class="field" formControlName="categoriaServicio">
-                  <option value="" disabled>Selecciona…</option>
+                <span class="mb-1 block text-sm font-medium">Categoría *</span>
+                <select class="field" formControlName="categoriaServicio" [disabled]="!categorias().length">
+                  <option value="" disabled>
+                    {{ categorias().length ? 'Selecciona…' : 'Sin categorías configuradas' }}
+                  </option>
                   @for (c of categorias(); track c) {
                     <option [value]="c">{{ c }}</option>
                   }
                 </select>
+                @if (!catalogosLoading() && !categorias().length) {
+                  <span class="mt-1 block text-xs text-amber-700">
+                    Configúralas en
+                    <a routerLink="/admin" class="font-medium underline">Admin → Tarifas</a>
+                    (Nueva categoría). Luego vuelve aquí.
+                  </span>
+                }
               </label>
             </div>
 
@@ -165,7 +174,7 @@ import { SkeletonComponent } from '../../shared/skeleton.component';
             </div>
 
             <label class="block">
-              <span class="mb-1 block text-sm font-medium">Observaciones</span>
+              <span class="mb-1 block text-sm font-medium">Observaciones *</span>
               <textarea
                 class="field min-h-[100px]"
                 formControlName="observaciones"
@@ -327,7 +336,7 @@ export class CasoNuevoComponent implements OnInit, OnDestroy {
     direccion: ['', [Validators.required, Validators.minLength(5)]],
     ciudad: ['', Validators.required],
     categoriaServicio: ['', Validators.required],
-    observaciones: [''],
+    observaciones: ['', [Validators.required, Validators.minLength(3)]],
   });
 
   ngOnInit(): void {

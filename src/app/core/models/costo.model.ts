@@ -27,7 +27,7 @@ export interface CategoriaConItems extends CategoriaCosto {
 
 export interface CrearCategoriaPayload {
   nombre: string;
-  descripcion?: string;
+  descripcion: string;
 }
 
 export interface ActualizarCategoriaPayload {
@@ -38,10 +38,10 @@ export interface ActualizarCategoriaPayload {
 export interface CrearItemPayload {
   categoriaId: string;
   nombre: string;
-  descripcion?: string;
+  descripcion: string;
   costoInterno: number;
   precioSugerido: number;
-  unidad?: string;
+  unidad: string;
   activo?: boolean;
 }
 
@@ -83,14 +83,14 @@ export interface PlantillaPdfCobro {
 
 export interface ActualizarPlantillaPdfPayload {
   aseguradoraId?: string | null;
-  razonSocial?: string;
-  nit?: string;
-  ciudad?: string;
-  telefono?: string;
-  email?: string;
-  colorAcento?: string;
-  textoHeader?: string;
-  textoFooter?: string;
+  razonSocial: string;
+  nit: string;
+  ciudad: string;
+  telefono: string;
+  email: string;
+  colorAcento: string;
+  textoHeader: string;
+  textoFooter: string;
   tipoPlantilla?: TipoPlantillaPdf;
   extras?: Partial<PlantillaPdfExtras>;
 }

@@ -131,7 +131,7 @@ interface ConfirmEstadoPayload {
               <dd class="mt-1 font-medium">{{ c.titularNombre }}</dd>
             </div>
             <div>
-              <dt class="text-xs uppercase tracking-wide text-slate-500">Teléfono</dt>
+              <dt class="text-xs uppercase tracking-wide text-slate-500">Celular</dt>
               <dd class="mt-1 font-medium">
                 <a class="text-accent underline" [href]="'tel:' + c.titularTelefono">{{ c.titularTelefono }}</a>
               </dd>

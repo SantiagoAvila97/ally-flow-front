@@ -50,9 +50,9 @@ interface NavItem {
   ],
   template: `
     <div class="min-h-screen flex flex-col">
-      @if (appEnv === 'local') {
+      @if (appEnv === 'local' && memoryMode()) {
         <div class="border-b border-amber-200/80 bg-amber-50 px-4 py-2 text-center text-xs text-amber-950 sm:text-sm">
-          API local: al reiniciar el servidor se pierden datos en memoria (si no hay DATABASE_URL).
+          API local sin DATABASE_URL: los cambios viven solo en memoria y se pierden al reiniciar.
         </div>
       }
       <header class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur">
@@ -261,6 +261,8 @@ export class AppShellComponent implements OnInit {
     environment.appEnv === 'prod' ? 'PROD' : environment.appEnv === 'qa' ? 'QA' : 'LOCAL';
   readonly appVersion = formatAppVersion();
   readonly apiVersion = signal<string | null>(null);
+  /** Solo true cuando el API reporta modo in-memory (sin Postgres). */
+  readonly memoryMode = signal(false);
   readonly tenantLogo = signal<string | null>(null);
 
   readonly apiVersionLabel = computed(() => {
@@ -304,10 +306,15 @@ export class AppShellComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.http.get<{ version?: string }>(`${environment.apiUrl}/health`).subscribe({
-      next: (h) => this.apiVersion.set(h.version ?? null),
-      error: () => this.apiVersion.set(null),
-    });
+    this.http
+      .get<{ version?: string; database?: string }>(`${environment.apiUrl}/health`)
+      .subscribe({
+        next: (h) => {
+          this.apiVersion.set(h.version ?? null);
+          this.memoryMode.set(h.database === 'memory');
+        },
+        error: () => this.apiVersion.set(null),
+      });
     this.loadTenantLogo();
     window.addEventListener('ally-empresa-logo', this.onLogoEvent);
     this.destroyRef.onDestroy(() => {
