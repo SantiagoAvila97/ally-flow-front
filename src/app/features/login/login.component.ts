@@ -378,7 +378,7 @@ export class LoginComponent implements OnInit, OnDestroy {
   readonly envLabel =
     environment.appEnv === 'prod' ? 'PROD' : environment.appEnv === 'qa' ? 'QA' : 'LOCAL';
   readonly demosOpen = signal(false);
-  readonly demoEmpresa = signal('Full Soluciones');
+  readonly demoEmpresa = signal('DEMO (con datos)');
   readonly liveLabel = signal('Caso #AF-2401');
   readonly liveHint = signal('Asignando técnico…');
 
@@ -390,19 +390,19 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   readonly demos: DemoEmpresa[] = [
     {
-      nombre: 'Full Soluciones',
+      nombre: 'DEMO (con datos)',
+      users: [
+        { role: 'ADMIN', email: 'admin@demo.local', password: 'admin123' },
+        { role: 'ASESOR', email: 'asesor@demo.local', password: 'asesor123' },
+        { role: 'TECNICO', email: 'tecnico@demo.local', password: 'tecnico123' },
+      ],
+    },
+    {
+      nombre: 'Full Soluciones — QA (vacío)',
       users: [
         { role: 'ADMIN', email: 'admin@fullsoluciones.com', password: 'admin123' },
         { role: 'ASESOR', email: 'asesor@fullsoluciones.com', password: 'asesor123' },
         { role: 'TECNICO', email: 'tecnico@fullsoluciones.com', password: 'tecnico123' },
-      ],
-    },
-    {
-      nombre: 'Norte Seguros',
-      users: [
-        { role: 'ADMIN', email: 'admin@norteseguros.com', password: 'admin123' },
-        { role: 'ASESOR', email: 'asesor@norteseguros.com', password: 'asesor123' },
-        { role: 'TECNICO', email: 'tecnico@norteseguros.com', password: 'tecnico123' },
       ],
     },
   ];
