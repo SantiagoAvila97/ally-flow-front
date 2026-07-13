@@ -1,20 +1,11 @@
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+﻿import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { LucideChevronDown, LucideLogIn } from '@lucide/angular';
 import { AuthService } from '../../core/services/auth.service';
 import { environment } from '../../../environments/environment';
-
-interface DemoUser {
-  role: string;
-  email: string;
-  password: string;
-}
-
-interface DemoEmpresa {
-  nombre: string;
-  users: DemoUser[];
-}
+import { formatAppVersion } from '../../core/version';
+import type { LoginDemoEmpresa } from './login-demos.types';
 
 @Component({
   selector: 'app-login',
@@ -84,7 +75,10 @@ interface DemoEmpresa {
       <main
         class="relative flex min-h-screen items-center justify-center overflow-y-auto px-6 py-10 lg:h-screen lg:min-h-0"
       >
-        <span class="env-badge" [attr.data-env]="appEnv" aria-label="Entorno">{{ envLabel }}</span>
+        <div class="build-meta" aria-label="Entorno y versión">
+          <span class="env-badge" [attr.data-env]="appEnv">{{ envLabel }}</span>
+          <span class="version-badge">{{ appVersion }}</span>
+        </div>
         <div class="mx-auto w-full max-w-md">
           <!-- Mobile brand -->
           <div class="mb-8 lg:hidden">
@@ -131,19 +125,19 @@ interface DemoEmpresa {
 
             <form class="mt-8 space-y-5 text-left" [formGroup]="form" (ngSubmit)="onSubmit()">
               <label class="block">
-                <span class="mb-1.5 block text-sm font-medium text-brand-soft">Email</span>
+                <span class="mb-1.5 block text-sm font-medium text-brand-soft">Email *</span>
                 <input
                   type="email"
                   formControlName="email"
                   autocomplete="username"
                   class="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-brand-ink
                          outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
-                  placeholder="admin@fullsoluciones.com"
+                  placeholder="user@company.com"
                 />
               </label>
 
               <label class="block">
-                <span class="mb-1.5 block text-sm font-medium text-brand-soft">Contraseña</span>
+                <span class="mb-1.5 block text-sm font-medium text-brand-soft">Contraseña *</span>
                 <input
                   type="password"
                   formControlName="password"
@@ -193,7 +187,7 @@ interface DemoEmpresa {
                 <div class="mt-4 space-y-4">
                   <!-- Company chips -->
                   <div class="flex flex-wrap gap-2">
-                    @for (emp of demos; track emp.nombre) {
+                    @for (emp of demos(); track emp.nombre) {
                       <button
                         type="button"
                         class="rounded-md border px-3 py-1.5 text-xs font-semibold transition"
@@ -219,13 +213,13 @@ interface DemoEmpresa {
                             class="btn-ghost w-full justify-start text-sm"
                             (click)="fillDemo(u.email, u.password)"
                           >
-                            {{ u.role }} — {{ u.email }}
+                            Entrar como {{ u.role }}
                           </button>
                         </li>
                       }
                     </ul>
                     <p class="text-[11px] text-slate-500">
-                      Los datos de cada empresa no se cruzan entre sí.
+                      Solo desarrollo local. Email y clave se rellenan en el formulario (clave oculta).
                     </p>
                   }
                 </div>
@@ -335,11 +329,16 @@ interface DemoEmpresa {
         animation: floatSoft 4.2s ease-in-out infinite;
       }
 
-      .env-badge {
+      .build-meta {
         position: absolute;
         right: 1rem;
         bottom: 1rem;
         z-index: 10;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+      .env-badge {
         display: inline-flex;
         align-items: center;
         border-radius: 0.25rem;
@@ -349,6 +348,18 @@ interface DemoEmpresa {
         letter-spacing: 0.04em;
         line-height: 1.2;
         text-transform: uppercase;
+      }
+      .version-badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 0.25rem;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        padding: 0.15rem 0.4rem;
+        font-size: 0.625rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        color: #64748b;
       }
       .env-badge[data-env='prod'] {
         background: #dcfce7;
@@ -377,8 +388,10 @@ export class LoginComponent implements OnInit, OnDestroy {
   readonly appEnv = environment.appEnv;
   readonly envLabel =
     environment.appEnv === 'prod' ? 'PROD' : environment.appEnv === 'qa' ? 'QA' : 'LOCAL';
+  readonly appVersion = formatAppVersion();
   readonly demosOpen = signal(false);
-  readonly demoEmpresa = signal('Full Soluciones');
+  readonly demoEmpresa = signal('DEMO');
+  readonly demos = signal<LoginDemoEmpresa[]>([]);
   readonly liveLabel = signal('Caso #AF-2401');
   readonly liveHint = signal('Asignando técnico…');
 
@@ -388,31 +401,12 @@ export class LoginComponent implements OnInit, OnDestroy {
     { n: '03', title: 'Cobro', short: 'Cobro', hint: 'Recaudo, costos y balance' },
   ];
 
-  readonly demos: DemoEmpresa[] = [
-    {
-      nombre: 'Full Soluciones',
-      users: [
-        { role: 'ADMIN', email: 'admin@fullsoluciones.com', password: 'admin123' },
-        { role: 'ASESOR', email: 'asesor@fullsoluciones.com', password: 'asesor123' },
-        { role: 'TECNICO', email: 'tecnico@fullsoluciones.com', password: 'tecnico123' },
-      ],
-    },
-    {
-      nombre: 'Norte Seguros',
-      users: [
-        { role: 'ADMIN', email: 'admin@norteseguros.com', password: 'admin123' },
-        { role: 'ASESOR', email: 'asesor@norteseguros.com', password: 'asesor123' },
-        { role: 'TECNICO', email: 'tecnico@norteseguros.com', password: 'tecnico123' },
-      ],
-    },
-  ];
-
   private liveTimer?: ReturnType<typeof setInterval>;
   private readonly liveFrames = [
     { label: 'Caso #AF-2401', hint: 'Por asignar…' },
     { label: 'En visita', hint: 'Evidencias en campo' },
     { label: 'Por facturar', hint: 'Armando la factura' },
-    { label: 'Factura enviada', hint: 'Espera OK aseguradora' },
+    { label: 'Factura enviada', hint: 'Espera OK cliente' },
     { label: 'Factura sin pagar', hint: 'Pendiente de pago' },
     { label: 'Pagada', hint: 'Balance actualizado' },
   ];
@@ -422,11 +416,16 @@ export class LoginComponent implements OnInit, OnDestroy {
     password: ['', Validators.required],
   });
 
-  activeDemo(): DemoEmpresa | undefined {
-    return this.demos.find((d) => d.nombre === this.demoEmpresa());
+  activeDemo(): LoginDemoEmpresa | undefined {
+    return this.demos().find((d) => d.nombre === this.demoEmpresa());
   }
 
   ngOnInit(): void {
+    if (this.showDemos) {
+      void import('./login-demos.local').then((m) => {
+        this.demos.set(m.LOGIN_DEMOS);
+      });
+    }
     let i = 0;
     this.liveTimer = setInterval(() => {
       i = (i + 1) % this.liveFrames.length;
@@ -452,7 +451,7 @@ export class LoginComponent implements OnInit, OnDestroy {
 
     const { email, password } = this.form.getRawValue();
     this.auth.login(email, password).subscribe({
-      next: () => {
+      next: (res) => {
         const raw = this.route.snapshot.queryParamMap.get('returnUrl');
         const returnUrl =
           raw &&
@@ -460,7 +459,9 @@ export class LoginComponent implements OnInit, OnDestroy {
           !raw.startsWith('//') &&
           !raw.includes('://')
             ? raw
-            : '/home';
+            : res.user.role === 'SUPER_ADMIN'
+              ? '/suite'
+              : '/home';
         void this.router.navigateByUrl(returnUrl);
       },
       error: (err) => {

@@ -92,9 +92,9 @@ export class CasosService {
       .pipe(map((r) => r.data));
   }
 
-  documentar(id: string, nota: string, fotoUrl?: string): Observable<Caso> {
+  documentar(id: string, nota: string): Observable<Caso> {
     return this.http
-      .post<ApiList<Caso>>(`${this.base}/${id}/documentar`, { nota, fotoUrl })
+      .post<ApiList<Caso>>(`${this.base}/${id}/documentar`, { nota })
       .pipe(map((r) => r.data));
   }
 

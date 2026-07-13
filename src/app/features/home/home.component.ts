@@ -1,4 +1,4 @@
-import { DatePipe, NgClass } from '@angular/common';
+﻿import { DatePipe, NgClass } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -107,7 +107,7 @@ type SortDir = 'asc' | 'desc';
             <input
               type="search"
               class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-              placeholder="Nº aseguradora, titular o título…"
+              placeholder="Nº cliente, titular o título…"
               [ngModel]="busqueda()"
               (ngModelChange)="onBusqueda($event)"
             />
@@ -172,7 +172,7 @@ type SortDir = 'asc' | 'desc';
 
           <label class="block">
             <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Aseguradora
+              Cliente
             </span>
             <select
               class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
@@ -291,7 +291,7 @@ type SortDir = 'asc' | 'desc';
                   </th>
                   <th class="px-4 py-3 font-semibold">
                     <button type="button" class="th-sort" [class.th-sort-active]="sortCol() === 'aseguradora'" (click)="toggleSort('aseguradora')">
-                      Aseguradora
+                      Cliente
                       @if (sortCol() === 'aseguradora' && sortDir() === 'asc') {
                         <svg lucideArrowUp [size]="13"></svg>
                       } @else if (sortCol() === 'aseguradora' && sortDir() === 'desc') {
@@ -561,7 +561,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       estado: 'PendienteAsignacion',
       titulo: '1. Por asignar',
       descripcion:
-        'El asesor registra la llamada: datos de aseguradora, titular, dirección y categoría. Aún no hay técnico.',
+        'El asesor registra la llamada: datos de cliente, titular, dirección y categoría. Aún no hay técnico.',
       actor: 'Asesor / Admin',
     },
     {
@@ -590,7 +590,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       estado: 'PendienteConfirmacionAsegurado',
       titulo: '5. Factura enviada · espera OK',
       descripcion:
-        'La factura ya se envió. Falta que la aseguradora la apruebe o la devuelva (OK) para poder registrar el pago.',
+        'La factura ya se envió. Falta que el cliente la apruebe o la devuelva (OK) para poder registrar el pago.',
       actor: 'Asesor / Admin',
       soloComercial: true,
     },
@@ -598,7 +598,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       estado: 'PendienteRecepcionPago',
       titulo: '6. Factura sin pagar',
       descripcion:
-        'La aseguradora ya dio OK. La factura está aprobada y falta que nos paguen (registrar el pago).',
+        'El cliente ya dio OK. La factura está aprobada y falta que nos paguen (registrar el pago).',
       actor: 'Asesor / Admin',
       soloComercial: true,
     },

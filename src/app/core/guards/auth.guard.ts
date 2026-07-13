@@ -20,7 +20,18 @@ export const authGuard: CanActivateFn = (route, state) => {
   }
 
   if (allowedRoles?.length && !auth.isAuthenticated(allowedRoles)) {
+    if (auth.hasRole('SUPER_ADMIN')) {
+      return router.createUrlTree(['/suite']);
+    }
     return router.createUrlTree(['/home']);
+  }
+
+  // SUPER_ADMIN no usa bandeja tenant
+  if (
+    auth.hasRole('SUPER_ADMIN') &&
+    (state.url === '/home' || state.url.startsWith('/home?'))
+  ) {
+    return router.createUrlTree(['/suite']);
   }
 
   return true;
@@ -33,6 +44,10 @@ export const guestGuard: CanActivateFn = () => {
 
   if (!auth.isAuthenticated()) {
     return true;
+  }
+
+  if (auth.hasRole('SUPER_ADMIN')) {
+    return router.createUrlTree(['/suite']);
   }
 
   return router.createUrlTree(['/home']);

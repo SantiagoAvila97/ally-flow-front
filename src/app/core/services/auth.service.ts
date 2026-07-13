@@ -1,30 +1,27 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
+import {
+  BehaviorSubject,
+  Observable,
+  of,
+  tap,
+  catchError,
+  map,
+  switchMap,
+} from 'rxjs';
 import { environment } from '../../../environments/environment';
-import type { JwtClaims, LoginResponse, Role, User } from '../models/user.model';
+import type { LoginResponse, Role, User } from '../models/user.model';
+import type { Permission } from '../models/permissions';
 import { CatalogosService } from './catalogos.service';
 import { CasosService } from './casos.service';
+import { encryptLoginCredentials } from '../utils/login-crypto';
 
-const TOKEN_KEY = 'ally_flow_token';
 const USER_KEY = 'ally_flow_user';
+const LEGACY_TOKEN_KEY = 'ally_flow_token';
 
 /**
- * ============================================================================
- * AuthService — autenticación JWT y sesión de usuario
- * ============================================================================
- *
- * Responsabilidades:
- *  - Login contra POST /api/auth/login
- *  - Persistencia de token + user en localStorage
- *  - Exposición reactiva de currentUser$
- *  - Helpers de rol (hasRole) usados por Guard y Home
- *  - Decodificación del payload JWT (solo lectura; la firma se valida en el backend)
- *
- * Escalabilidad:
- *  - Sustituir localStorage por cookies httpOnly si se endurece seguridad.
- *  - Añadir refresh tokens sin cambiar la API pública de este servicio.
+ * Auth — cookie httpOnly + login cifrado (ek/iv/ct).
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -40,74 +37,96 @@ export class AuthService {
     return this.userSubject.value;
   }
 
-  get token(): string | null {
-    return localStorage.getItem(TOKEN_KEY);
+  hydrateSession(): Observable<User | null> {
+    localStorage.removeItem(LEGACY_TOKEN_KEY);
+    // Sin user local → no hay sesión previa; no llamar /me (evita 401 ruidoso en login).
+    if (!this.readStoredUser()) {
+      return of(null);
+    }
+    return this.http.get<{ user: User }>(`${environment.apiUrl}/auth/me`).pipe(
+      tap((res) => {
+        this.persistUser(res.user);
+        this.userSubject.next(res.user);
+      }),
+      map((res) => res.user),
+      catchError(() => {
+        this.clearLocalSession();
+        return of(null);
+      }),
+    );
   }
 
   login(email: string, password: string): Observable<LoginResponse> {
     return this.http
-      .post<LoginResponse>(`${environment.apiUrl}/auth/login`, { email, password })
+      .get<{ publicKey: string }>(`${environment.apiUrl}/auth/public-key`)
       .pipe(
+        switchMap(async (crypto) => {
+          const body = await encryptLoginCredentials(crypto.publicKey, email, password);
+          return body;
+        }),
+        switchMap((body) =>
+          this.http.post<LoginResponse>(`${environment.apiUrl}/auth/login`, body),
+        ),
         tap((res) => {
-          // Nueva sesión → no reutilizar catálogos/meta del usuario anterior
           this.clearMetaCaches();
-          localStorage.setItem(TOKEN_KEY, res.token);
-          localStorage.setItem(USER_KEY, JSON.stringify(res.user));
+          localStorage.removeItem(LEGACY_TOKEN_KEY);
+          this.persistUser(res.user);
           this.userSubject.next(res.user);
         }),
       );
   }
 
   logout(): void {
-    this.clearSession();
+    this.http.post(`${environment.apiUrl}/auth/logout`, {}).subscribe({
+      error: () => undefined,
+      complete: () => undefined,
+    });
+    this.clearLocalSession();
     void this.router.navigate(['/login']);
   }
 
-  /**
-   * True si hay token, no está expirado y (opcionalmente) el rol del JWT está permitido.
-   * El rol se toma del token (no del user en localStorage) para evitar escalada en UI.
-   */
   isAuthenticated(allowedRoles?: Role[]): boolean {
-    const token = this.token;
-    if (!token) return false;
+    const user = this.currentUser;
+    if (!user) return false;
 
-    const claims = this.decodeToken(token);
-    if (!claims) return false;
-
-    if (claims.exp && claims.exp * 1000 < Date.now()) {
-      this.clearSession();
+    if (user.exp && user.exp * 1000 < Date.now()) {
+      this.clearLocalSession();
       return false;
     }
 
     if (allowedRoles?.length) {
-      return allowedRoles.includes(claims.role);
+      return allowedRoles.includes(user.role);
     }
 
     return true;
   }
 
   hasRole(...roles: Role[]): boolean {
-    const token = this.token;
-    if (!token) return false;
-    const claims = this.decodeToken(token);
-    if (!claims) return false;
-    return roles.includes(claims.role);
+    const user = this.currentUser;
+    if (!user) return false;
+    return roles.includes(user.role);
   }
 
-  decodeToken(token: string): JwtClaims | null {
-    try {
-      const payload = token.split('.')[1];
-      if (!payload) return null;
-      const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
-      return JSON.parse(json) as JwtClaims;
-    } catch {
-      return null;
-    }
+  hasPermission(...perms: Permission[]): boolean {
+    const user = this.currentUser;
+    if (!user?.permissions?.length) return false;
+    return perms.every((p) => user.permissions.includes(p));
   }
 
-  private clearSession(): void {
-    localStorage.removeItem(TOKEN_KEY);
+  changePassword(currentPassword: string, newPassword: string): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>(`${environment.apiUrl}/auth/change-password`, {
+      currentPassword,
+      newPassword,
+    });
+  }
+
+  private persistUser(user: User): void {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  }
+
+  private clearLocalSession(): void {
     localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(LEGACY_TOKEN_KEY);
     this.userSubject.next(null);
     this.clearMetaCaches();
   }
@@ -118,10 +137,16 @@ export class AuthService {
   }
 
   private readStoredUser(): User | null {
+    localStorage.removeItem(LEGACY_TOKEN_KEY);
     const raw = localStorage.getItem(USER_KEY);
     if (!raw) return null;
     try {
-      return JSON.parse(raw) as User;
+      const user = JSON.parse(raw) as User;
+      if (!user?.id || !user?.role) return null;
+      if (!Array.isArray(user.permissions)) {
+        user.permissions = [];
+      }
+      return user;
     } catch {
       return null;
     }

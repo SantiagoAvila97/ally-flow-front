@@ -1,11 +1,10 @@
-import { DatePipe, DecimalPipe, NgClass } from '@angular/common';
+﻿import { DatePipe, DecimalPipe, NgClass } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   LucideArrowLeft,
-  LucideArrowRight,
   LucideBadgeCheck,
   LucideBanknote,
   LucideCircleCheck,
@@ -30,10 +29,12 @@ import { CostosService } from '../../core/services/costos.service';
 import type { Caso, EstadoCaso, LineaCobro, TecnicoOption, TipoFirmaCierre } from '../../core/models/caso.model';
 import type { CategoriaConItems, ItemCosto } from '../../core/models/costo.model';
 import { labelEstadoCaso } from '../../core/labels/estado-caso';
+import { prepareEvidencePhoto } from '../../core/utils/evidence-photo';
 import { mapsLinks } from '../../shared/maps.util';
 import { returnLabel, safeReturnTo } from '../../shared/nav-return';
 import { SignaturePadComponent } from '../../shared/signature-pad.component';
 import { SkeletonComponent } from '../../shared/skeleton.component';
+import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 
 type ConfirmKind =
   | 'asignar'
@@ -62,7 +63,6 @@ interface ConfirmEstadoPayload {
     RouterLink,
     SignaturePadComponent,
     LucideArrowLeft,
-    LucideArrowRight,
     LucideBadgeCheck,
     LucideBanknote,
     LucideCircleCheck,
@@ -81,6 +81,7 @@ interface ConfirmEstadoPayload {
     LucideUserCheck,
     LucideX,
     SkeletonComponent,
+    ConfirmDialogComponent,
   ],
   template: `
     <div class="pb-16">
@@ -118,11 +119,11 @@ interface ConfirmEstadoPayload {
 
           <dl class="mt-8 grid gap-4 sm:grid-cols-2 text-sm">
             <div>
-              <dt class="text-xs uppercase tracking-wide text-slate-500">Nº aseguradora</dt>
+              <dt class="text-xs uppercase tracking-wide text-slate-500">Nº cliente</dt>
               <dd class="mt-1 font-medium">{{ c.numeroAseguradora }}</dd>
             </div>
             <div>
-              <dt class="text-xs uppercase tracking-wide text-slate-500">Aseguradora</dt>
+              <dt class="text-xs uppercase tracking-wide text-slate-500">Cliente</dt>
               <dd class="mt-1 font-medium">{{ c.aseguradora }}</dd>
             </div>
             <div>
@@ -130,7 +131,7 @@ interface ConfirmEstadoPayload {
               <dd class="mt-1 font-medium">{{ c.titularNombre }}</dd>
             </div>
             <div>
-              <dt class="text-xs uppercase tracking-wide text-slate-500">Teléfono</dt>
+              <dt class="text-xs uppercase tracking-wide text-slate-500">Celular</dt>
               <dd class="mt-1 font-medium">
                 <a class="text-accent underline" [href]="'tel:' + c.titularTelefono">{{ c.titularTelefono }}</a>
               </dd>
@@ -143,27 +144,29 @@ interface ConfirmEstadoPayload {
               @if (c.direccionNormalizada) {
                 <p class="mt-1 text-xs text-slate-500">{{ c.direccionNormalizada }}</p>
               }
-              <div class="mt-2 flex flex-wrap gap-2">
-                <a class="btn-primary !text-xs" [href]="links.google" target="_blank" rel="noopener">
-                  <svg lucideMapPin [size]="14"></svg>
-                  Google Maps
-                </a>
-                <a class="btn-ghost !text-xs border border-slate-200" [href]="links.apple" target="_blank" rel="noopener">
-                  <svg lucideMapPin [size]="14"></svg>
-                  Apple Maps
-                </a>
-                <a class="btn-ghost !text-xs border border-slate-200" [href]="links.waze" target="_blank" rel="noopener">
-                  <svg lucideNavigation [size]="14"></svg>
-                  Waze
-                </a>
-              </div>
-              @if (mapEmbedSafe()) {
-                <iframe
-                  class="mt-3 h-48 w-full rounded-lg border border-slate-200"
-                  [src]="mapEmbedSafe()!"
-                  title="Mapa del servicio"
-                  loading="lazy"
-                ></iframe>
+              @if (showServiceMap(c)) {
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <a class="btn-primary !text-xs" [href]="links.google" target="_blank" rel="noopener">
+                    <svg lucideMapPin [size]="14"></svg>
+                    Google Maps
+                  </a>
+                  <a class="btn-ghost !text-xs border border-slate-200" [href]="links.apple" target="_blank" rel="noopener">
+                    <svg lucideMapPin [size]="14"></svg>
+                    Apple Maps
+                  </a>
+                  <a class="btn-ghost !text-xs border border-slate-200" [href]="links.waze" target="_blank" rel="noopener">
+                    <svg lucideNavigation [size]="14"></svg>
+                    Waze
+                  </a>
+                </div>
+                @if (mapEmbedSafe()) {
+                  <iframe
+                    class="mt-3 h-48 w-full rounded-lg border border-slate-200"
+                    [src]="mapEmbedSafe()!"
+                    title="Mapa del servicio"
+                    loading="lazy"
+                  ></iframe>
+                }
               }
             </div>
             <div>
@@ -368,7 +371,7 @@ interface ConfirmEstadoPayload {
             <section class="mt-8 rounded-lg border border-blue-200 bg-white p-5">
               <h2 class="text-sm font-semibold text-brand-ink">Factura enviada · espera OK</h2>
               <p class="mt-1 text-sm text-slate-600">
-                La factura ya se envió. Confirma cuando la aseguradora la apruebe o la
+                La factura ya se envió. Confirma cuando el cliente la apruebe o la
                 devuelva (OK). Luego quedará como factura sin pagar.
               </p>
               <div class="mt-4 flex flex-wrap gap-2">
@@ -383,7 +386,7 @@ interface ConfirmEstadoPayload {
                   } @else {
                     <svg lucideBadgeCheck [size]="16"></svg>
                   }
-                  Marcar OK aseguradora
+                  Marcar OK cliente
                 </button>
                 <button
                   type="button"
@@ -406,7 +409,7 @@ interface ConfirmEstadoPayload {
             <section class="mt-8 rounded-lg border border-teal-200 bg-white p-5">
               <h2 class="text-sm font-semibold text-brand-ink">Factura sin pagar</h2>
               <p class="mt-1 text-sm text-slate-600">
-                Marca como pagada cuando hayas recibido el pago de la aseguradora.
+                Marca como pagada cuando hayas recibido el pago de el cliente.
               </p>
               <div class="mt-4 flex flex-wrap gap-2">
                 <button type="button" class="btn-estado" [disabled]="busy()" (click)="pedirCobrar(c)">
@@ -490,42 +493,31 @@ interface ConfirmEstadoPayload {
                       }
                     </ul>
                   }
-                  <div class="mt-3 space-y-3">
+                  <div class="mt-3 space-y-2">
                     <div class="flex flex-wrap items-center gap-2">
-                      <label class="btn-primary cursor-pointer">
+                      <label class="btn-primary cursor-pointer" [class.opacity-50]="busy() || fotoUploading()">
                         <svg lucideImagePlus [size]="16"></svg>
                         Subir foto
                         <input
                           type="file"
-                          accept="image/png,image/jpeg,image/webp"
+                          accept="image/png,image/jpeg,image/webp,image/*"
+                          capture="environment"
                           class="sr-only"
-                          [disabled]="busy()"
+                          [disabled]="busy() || fotoUploading()"
                           (change)="onFotoFile($event, c)"
                         />
                       </label>
                       @if (fotoUploading()) {
                         <span class="inline-flex items-center gap-1.5 text-xs text-slate-500">
                           <span class="spinner spinner-sm"></span>
-                          Procesando…
+                          Subiendo foto…
                         </span>
                       }
                     </div>
-                    <div class="flex flex-wrap gap-2">
-                      <input
-                        type="url"
-                        class="min-w-[240px] flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
-                        [(ngModel)]="fotoUrl"
-                        placeholder="O pega una URL de imagen (opcional)"
-                      />
-                      <button type="button" class="btn-ghost border border-slate-200" [disabled]="busy()" (click)="subirFoto(c)">
-                        @if (busy()) {
-                          <span class="spinner"></span>
-                        } @else {
-                          <svg lucideImagePlus [size]="16"></svg>
-                        }
-                        Agregar URL
-                      </button>
-                    </div>
+                    <p class="text-xs text-slate-500">
+                      Solo fotos desde el dispositivo (PNG / JPEG / WebP). Máx. 8MB; se comprimen
+                      automáticamente. No se permiten URLs.
+                    </p>
                   </div>
                 </div>
 
@@ -700,63 +692,16 @@ interface ConfirmEstadoPayload {
         }
       </main>
 
-      @if (confirmOpen(); as conf) {
-        <div class="modal-backdrop" (click)="cerrarConfirmacion()">
-          <div class="modal-panel" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
-            <h3 class="text-lg font-semibold text-brand-ink">¿Avanzar estado?</h3>
-            <p class="mt-2 text-sm text-brand-soft">
-              <span class="font-semibold text-brand-ink">{{ conf.fromLabel }}</span>
-              <span class="mx-1.5 text-slate-400">→</span>
-              <span class="font-semibold text-emerald-800">{{ conf.toLabel }}</span>
-            </p>
-
-            <ul class="mt-4 space-y-1.5 rounded-md border border-slate-200 bg-white px-3 py-3 text-sm text-brand-ink">
-              @for (line of conf.lines; track $index) {
-                <li>{{ line }}</li>
-              }
-            </ul>
-
-            <div class="mt-5 flex justify-end gap-2">
-              <button type="button" class="btn-ghost border border-slate-200" [disabled]="busy()" (click)="cerrarConfirmacion()">
-                <svg lucideX [size]="15"></svg>
-                Cancelar
-              </button>
-              <button type="button" class="btn-estado" [disabled]="busy()" (click)="ejecutarConfirmacion()">
-                @if (busy()) {
-                  <span class="spinner"></span>
-                  Procesando…
-                } @else {
-                  <svg lucideArrowRight [size]="16"></svg>
-                  Confirmar avance
-                }
-              </button>
-            </div>
-          </div>
-        </div>
-      }
+      <app-confirm-dialog
+        [payload]="confirmDialogPayload()"
+        [busy]="busy()"
+        (cancelled)="cerrarConfirmacion()"
+        (confirmed)="ejecutarConfirmacion()"
+      />
     </div>
   `,
   styles: [
     `
-      .modal-backdrop {
-        position: fixed;
-        inset: 0;
-        z-index: 50;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgb(7 20 34 / 0.45);
-        padding: 1rem;
-      }
-      .modal-panel {
-        width: 100%;
-        max-width: 28rem;
-        border-radius: 0.75rem;
-        border: 1px solid #e2e8f0;
-        background: white;
-        padding: 1.25rem 1.5rem;
-        box-shadow: 0 24px 60px -24px rgb(15 42 68 / 0.45);
-      }
       .qty-btn {
         display: inline-flex;
         height: 1.75rem;
@@ -837,13 +782,23 @@ export class CasoDetalleComponent implements OnInit {
   readonly mapEmbedSafe = signal<SafeResourceUrl | null>(null);
   readonly modoCerrar = signal(false);
   readonly confirmOpen = signal<ConfirmEstadoPayload | null>(null);
+  readonly confirmDialogPayload = computed(() => {
+    const conf = this.confirmOpen();
+    if (!conf) return null;
+    return {
+      title: '¿Avanzar estado?',
+      fromLabel: conf.fromLabel,
+      toLabel: conf.toLabel,
+      lines: conf.lines,
+      confirmLabel: 'Confirmar avance',
+    };
+  });
   readonly lineasSaving = signal(false);
   readonly fotoUploading = signal(false);
 
   draftLineas: LineaCobro[] = [];
   itemToAddId = '';
   tecnicoSelected = '';
-  fotoUrl = '';
   notaDocumentacion = '';
   tipoFirma: TipoFirmaCierre = 'TECNICO';
   links = mapsLinks('', '');
@@ -943,16 +898,16 @@ export class CasoDetalleComponent implements OnInit {
   }
 
   canConfirmarAsegurado(c: Caso): boolean {
-    return this.canGestionarCobro(c) && c.estado === 'PendienteConfirmacionAsegurado';
+    return this.isAdmin() && !c.esGarantia && c.estado === 'PendienteConfirmacionAsegurado';
   }
 
   canMarcarCobrado(c: Caso): boolean {
-    return this.canGestionarCobro(c) && c.estado === 'PendienteRecepcionPago';
+    return this.isAdmin() && !c.esGarantia && c.estado === 'PendienteRecepcionPago';
   }
 
   canGarantia(c: Caso): boolean {
     return (
-      (this.isAdmin() || this.isAsesor()) &&
+      this.isAdmin() &&
       (c.estado === 'Cobrado' || c.estado === 'CerradoGarantia')
     );
   }
@@ -1155,7 +1110,7 @@ export class CasoDetalleComponent implements OnInit {
         `Titular: ${c.titularNombre}`,
         ...items,
         `Total: ${total.toLocaleString('es-CO')} COP`,
-        'Se marcará la factura como enviada a la aseguradora.',
+        'Se marcará la factura como enviada a el cliente.',
         'El caso quedará esperando el OK / devolución.',
         'Revisa ítems y total antes de continuar.',
       ],
@@ -1168,7 +1123,7 @@ export class CasoDetalleComponent implements OnInit {
       fromLabel: this.labelEstado('PendienteConfirmacionAsegurado'),
       toLabel: this.labelEstado('PendienteRecepcionPago'),
       lines: this.resumenCobro(c, [
-        'La aseguradora aprueba / devuelve la factura (OK).',
+        'El cliente aprueba / devuelve la factura (OK).',
         'El caso pasará a factura sin pagar.',
       ]),
     });
@@ -1292,56 +1247,69 @@ export class CasoDetalleComponent implements OnInit {
     ];
   }
 
-  subirFoto(c: Caso): void {
-    if (!this.fotoUrl.trim()) {
-      this.actionError.set('Indica una URL de foto o súbela desde el dispositivo');
-      return;
+  /** Mapa solo en visita / garantía. Oculto desde Por facturar en adelante. */
+  showServiceMap(c: Caso): boolean {
+    switch (c.estado) {
+      case 'PendienteAsignacion':
+      case 'Asignado':
+      case 'EnGestion':
+      case 'EnGarantia':
+        return true;
+      case 'PendienteDocumentoCobro': // Por facturar
+      case 'PendienteConfirmacionAsegurado': // Factura enviada · espera OK
+      case 'PendienteRecepcionPago': // Factura sin pagar
+      case 'Cobrado':
+      case 'CerradoGarantia':
+      default:
+        return false;
     }
-    this.run(() => this.casosService.addFoto(c.id, this.fotoUrl.trim()), () => {
-      this.fotoUrl = '';
-    });
   }
 
-  onFotoFile(ev: Event, c: Caso): void {
+  async onFotoFile(ev: Event, c: Caso): Promise<void> {
     const input = ev.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
 
-    const allowed = ['image/png', 'image/jpeg', 'image/webp'];
-    if (!allowed.includes(file.type)) {
-      this.actionError.set('Solo PNG, JPEG o WebP');
-      return;
-    }
-    if (file.size > 1_800_000) {
-      this.actionError.set('La foto supera ~1.8MB; usa una más liviana');
-      return;
-    }
-
     this.fotoUploading.set(true);
     this.actionError.set(null);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result ?? '');
+    try {
+      const dataUrl = await prepareEvidencePhoto(file);
+      this.busy.set(true);
+      this.casosService.addFoto(c.id, dataUrl).subscribe({
+        next: (updated) => {
+          this.caso.set(updated);
+          this.syncDraftLineas(updated);
+          this.applyMap(updated);
+          this.busy.set(false);
+          this.fotoUploading.set(false);
+        },
+        error: (err) => {
+          this.busy.set(false);
+          this.fotoUploading.set(false);
+          const status = err?.status as number | undefined;
+          if (status === 413) {
+            this.actionError.set(
+              'La foto es demasiado grande para el servidor. Prueba otra más liviana',
+            );
+          } else {
+            this.actionError.set(
+              err?.error?.message ?? 'No se pudo guardar la foto. Intenta de nuevo',
+            );
+          }
+        },
+      });
+    } catch (e) {
       this.fotoUploading.set(false);
-      if (!dataUrl.startsWith('data:image/')) {
-        this.actionError.set('No se pudo leer la imagen');
-        return;
-      }
-      this.run(() => this.casosService.addFoto(c.id, dataUrl));
-    };
-    reader.onerror = () => {
-      this.fotoUploading.set(false);
-      this.actionError.set('Error al leer el archivo');
-    };
-    reader.readAsDataURL(file);
+      this.actionError.set(e instanceof Error ? e.message : 'No se pudo cargar la foto');
+    }
   }
 
   documentar(c: Caso): void {
     const nota = this.notaDocumentacion.trim();
     if (nota.length < 3) return;
     this.run(
-      () => this.casosService.documentar(c.id, nota, this.fotoUrl.trim() || undefined),
+      () => this.casosService.documentar(c.id, nota),
       () => {
         this.notaDocumentacion = '';
       },
@@ -1377,7 +1345,7 @@ export class CasoDetalleComponent implements OnInit {
 
   private applyMap(c: Caso): void {
     this.links = mapsLinks(c.direccion, c.ciudad, c.lat, c.lon);
-    if (this.links.embed) {
+    if (this.showServiceMap(c) && this.links.embed) {
       this.mapEmbedSafe.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.links.embed));
     } else {
       this.mapEmbedSafe.set(null);

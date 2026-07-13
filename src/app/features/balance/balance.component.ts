@@ -1,4 +1,4 @@
-import { DatePipe, DecimalPipe, NgClass } from '@angular/common';
+﻿import { DatePipe, DecimalPipe, NgClass } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
@@ -119,7 +119,7 @@ type SortDir = 'asc' | 'desc';
             </div>
             <p class="kpi-value">{{ d.totales.pendientePago | number: '1.0-0' }}</p>
             <p class="kpi-hint">
-              {{ d.totales.casosPendientePago }} ticket(s) · espera OK aseguradora o el pago
+              {{ d.totales.casosPendientePago }} ticket(s) · espera OK cliente o el pago
             </p>
             <a
               routerLink="/home"
@@ -159,12 +159,12 @@ type SortDir = 'asc' | 'desc';
           </p>
         }
 
-        <!-- Por aseguradora -->
+        <!-- Por cliente -->
         <section class="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-soft">
           <div class="border-b border-slate-100 px-4 py-3">
-            <h2 class="font-semibold text-brand-ink">Por aseguradora</h2>
+            <h2 class="font-semibold text-brand-ink">Por cliente</h2>
             <p class="mt-0.5 text-sm text-brand-soft/80">
-              Cuánto ya cobraste (pagado) y cuánto sigue pendiente con cada aseguradora.
+              Cuánto ya cobraste (pagado) y cuánto sigue pendiente con cada cliente.
             </p>
           </div>
           <div class="overflow-x-auto">
@@ -173,7 +173,7 @@ type SortDir = 'asc' | 'desc';
                 <tr>
                   <th class="px-4 py-2.5 font-semibold">
                     <button type="button" class="th-sort" [class.th-sort-active]="asegSortCol() === 'nombre'" (click)="toggleAsegSort('nombre')">
-                      Aseguradora
+                      Cliente
                       @if (asegSortCol() === 'nombre' && asegSortDir() === 'asc') {
                         <svg lucideArrowUp [size]="12"></svg>
                       } @else if (asegSortCol() === 'nombre' && asegSortDir() === 'desc') {
@@ -304,7 +304,7 @@ type SortDir = 'asc' | 'desc';
                 </span>
                 <div>
                   <h2 class="font-semibold text-brand-ink">Facturas sin pagar</h2>
-                  <p class="mt-0.5 text-xs text-brand-soft">Espera OK aseguradora o el pago</p>
+                  <p class="mt-0.5 text-xs text-brand-soft">Espera OK cliente o el pago</p>
                 </div>
               </div>
             </div>
