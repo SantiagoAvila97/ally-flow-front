@@ -138,7 +138,7 @@ interface DemoEmpresa {
                   autocomplete="username"
                   class="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-brand-ink
                          outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
-                  placeholder="admin@fullsoluciones.com"
+                  placeholder="user@company.com"
                 />
               </label>
 
@@ -378,7 +378,7 @@ export class LoginComponent implements OnInit, OnDestroy {
   readonly envLabel =
     environment.appEnv === 'prod' ? 'PROD' : environment.appEnv === 'qa' ? 'QA' : 'LOCAL';
   readonly demosOpen = signal(false);
-  readonly demoEmpresa = signal('DEMO (con datos)');
+  readonly demoEmpresa = signal('DEMO');
   readonly liveLabel = signal('Caso #AF-2401');
   readonly liveHint = signal('Asignando técnico…');
 
@@ -390,7 +390,7 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   readonly demos: DemoEmpresa[] = [
     {
-      nombre: 'DEMO (con datos)',
+      nombre: 'DEMO',
       users: [
         { role: 'ADMIN', email: 'admin@demo.local', password: 'admin123' },
         { role: 'ASESOR', email: 'asesor@demo.local', password: 'asesor123' },
@@ -398,7 +398,7 @@ export class LoginComponent implements OnInit, OnDestroy {
       ],
     },
     {
-      nombre: 'Full Soluciones — QA (vacío)',
+      nombre: 'Full Soluciones',
       users: [
         { role: 'ADMIN', email: 'admin@fullsoluciones.com', password: 'admin123' },
         { role: 'ASESOR', email: 'asesor@fullsoluciones.com', password: 'asesor123' },
@@ -452,7 +452,7 @@ export class LoginComponent implements OnInit, OnDestroy {
 
     const { email, password } = this.form.getRawValue();
     this.auth.login(email, password).subscribe({
-      next: () => {
+      next: (res) => {
         const raw = this.route.snapshot.queryParamMap.get('returnUrl');
         const returnUrl =
           raw &&
@@ -460,7 +460,9 @@ export class LoginComponent implements OnInit, OnDestroy {
           !raw.startsWith('//') &&
           !raw.includes('://')
             ? raw
-            : '/home';
+            : res.user.role === 'SUPER_ADMIN'
+              ? '/suite'
+              : '/home';
         void this.router.navigateByUrl(returnUrl);
       },
       error: (err) => {

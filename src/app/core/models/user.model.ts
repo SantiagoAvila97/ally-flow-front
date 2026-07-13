@@ -1,12 +1,12 @@
-export type Role = 'ADMIN' | 'ASESOR' | 'TECNICO';
+export type Role = 'ADMIN' | 'ASESOR' | 'TECNICO' | 'SUPER_ADMIN';
 
 export interface User {
   id: string;
   email: string;
   nombre: string;
   role: Role;
-  empresaId: string;
-  empresaNombre: string;
+  empresaId: string | null;
+  empresaNombre: string | null;
 }
 
 export interface LoginResponse {
@@ -20,8 +20,8 @@ export interface JwtClaims {
   email: string;
   nombre: string;
   role: Role;
-  empresaId: string;
-  empresaNombre: string;
+  empresaId: string | null;
+  empresaNombre: string | null;
   exp?: number;
   iat?: number;
 }

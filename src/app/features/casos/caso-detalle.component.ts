@@ -5,7 +5,6 @@ import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   LucideArrowLeft,
-  LucideArrowRight,
   LucideBadgeCheck,
   LucideBanknote,
   LucideCircleCheck,
@@ -34,6 +33,7 @@ import { mapsLinks } from '../../shared/maps.util';
 import { returnLabel, safeReturnTo } from '../../shared/nav-return';
 import { SignaturePadComponent } from '../../shared/signature-pad.component';
 import { SkeletonComponent } from '../../shared/skeleton.component';
+import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 
 type ConfirmKind =
   | 'asignar'
@@ -62,7 +62,6 @@ interface ConfirmEstadoPayload {
     RouterLink,
     SignaturePadComponent,
     LucideArrowLeft,
-    LucideArrowRight,
     LucideBadgeCheck,
     LucideBanknote,
     LucideCircleCheck,
@@ -81,6 +80,7 @@ interface ConfirmEstadoPayload {
     LucideUserCheck,
     LucideX,
     SkeletonComponent,
+    ConfirmDialogComponent,
   ],
   template: `
     <div class="pb-16">
@@ -700,63 +700,16 @@ interface ConfirmEstadoPayload {
         }
       </main>
 
-      @if (confirmOpen(); as conf) {
-        <div class="modal-backdrop" (click)="cerrarConfirmacion()">
-          <div class="modal-panel" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
-            <h3 class="text-lg font-semibold text-brand-ink">¿Avanzar estado?</h3>
-            <p class="mt-2 text-sm text-brand-soft">
-              <span class="font-semibold text-brand-ink">{{ conf.fromLabel }}</span>
-              <span class="mx-1.5 text-slate-400">→</span>
-              <span class="font-semibold text-emerald-800">{{ conf.toLabel }}</span>
-            </p>
-
-            <ul class="mt-4 space-y-1.5 rounded-md border border-slate-200 bg-white px-3 py-3 text-sm text-brand-ink">
-              @for (line of conf.lines; track $index) {
-                <li>{{ line }}</li>
-              }
-            </ul>
-
-            <div class="mt-5 flex justify-end gap-2">
-              <button type="button" class="btn-ghost border border-slate-200" [disabled]="busy()" (click)="cerrarConfirmacion()">
-                <svg lucideX [size]="15"></svg>
-                Cancelar
-              </button>
-              <button type="button" class="btn-estado" [disabled]="busy()" (click)="ejecutarConfirmacion()">
-                @if (busy()) {
-                  <span class="spinner"></span>
-                  Procesando…
-                } @else {
-                  <svg lucideArrowRight [size]="16"></svg>
-                  Confirmar avance
-                }
-              </button>
-            </div>
-          </div>
-        </div>
-      }
+      <app-confirm-dialog
+        [payload]="confirmDialogPayload()"
+        [busy]="busy()"
+        (cancelled)="cerrarConfirmacion()"
+        (confirmed)="ejecutarConfirmacion()"
+      />
     </div>
   `,
   styles: [
     `
-      .modal-backdrop {
-        position: fixed;
-        inset: 0;
-        z-index: 50;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgb(7 20 34 / 0.45);
-        padding: 1rem;
-      }
-      .modal-panel {
-        width: 100%;
-        max-width: 28rem;
-        border-radius: 0.75rem;
-        border: 1px solid #e2e8f0;
-        background: white;
-        padding: 1.25rem 1.5rem;
-        box-shadow: 0 24px 60px -24px rgb(15 42 68 / 0.45);
-      }
       .qty-btn {
         display: inline-flex;
         height: 1.75rem;
@@ -837,6 +790,17 @@ export class CasoDetalleComponent implements OnInit {
   readonly mapEmbedSafe = signal<SafeResourceUrl | null>(null);
   readonly modoCerrar = signal(false);
   readonly confirmOpen = signal<ConfirmEstadoPayload | null>(null);
+  readonly confirmDialogPayload = computed(() => {
+    const conf = this.confirmOpen();
+    if (!conf) return null;
+    return {
+      title: '¿Avanzar estado?',
+      fromLabel: conf.fromLabel,
+      toLabel: conf.toLabel,
+      lines: conf.lines,
+      confirmLabel: 'Confirmar avance',
+    };
+  });
   readonly lineasSaving = signal(false);
   readonly fotoUploading = signal(false);
 
@@ -943,16 +907,16 @@ export class CasoDetalleComponent implements OnInit {
   }
 
   canConfirmarAsegurado(c: Caso): boolean {
-    return this.canGestionarCobro(c) && c.estado === 'PendienteConfirmacionAsegurado';
+    return this.isAdmin() && !c.esGarantia && c.estado === 'PendienteConfirmacionAsegurado';
   }
 
   canMarcarCobrado(c: Caso): boolean {
-    return this.canGestionarCobro(c) && c.estado === 'PendienteRecepcionPago';
+    return this.isAdmin() && !c.esGarantia && c.estado === 'PendienteRecepcionPago';
   }
 
   canGarantia(c: Caso): boolean {
     return (
-      (this.isAdmin() || this.isAsesor()) &&
+      this.isAdmin() &&
       (c.estado === 'Cobrado' || c.estado === 'CerradoGarantia')
     );
   }

@@ -16,6 +16,13 @@ export const routes: Routes = [
       import('./shared/app-shell.component').then((m) => m.AppShellComponent),
     children: [
       {
+        path: 'suite',
+        canActivate: [authGuard],
+        data: { roles: ['SUPER_ADMIN'] },
+        loadComponent: () =>
+          import('./features/suite/suite.component').then((m) => m.SuiteComponent),
+      },
+      {
         path: 'home',
         loadComponent: () =>
           import('./features/home/home.component').then((m) => m.HomeComponent),

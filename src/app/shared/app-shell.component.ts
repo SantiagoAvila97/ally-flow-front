@@ -53,7 +53,7 @@ interface NavItem {
               />
               <span class="min-w-0 leading-tight">
                 <span class="block truncate text-base font-semibold text-brand-ink sm:text-lg">
-                  {{ auth.currentUser?.empresaNombre }}
+                  {{ auth.currentUser?.empresaNombre || (auth.hasRole('SUPER_ADMIN') ? 'Ally Flow Suite' : 'Ally Flow') }}
                 </span>
                 <span class="block text-[11px] font-semibold tracking-wide text-brand/60">Ally Flow</span>
               </span>
@@ -197,6 +197,7 @@ export class AppShellComponent {
   readonly appEnv = environment.appEnv;
 
   private readonly allNav: NavItem[] = [
+    { label: 'Suite', path: '/suite', roles: ['SUPER_ADMIN'], icon: 'settings' },
     { label: 'Bandeja', path: '/home', roles: ['ADMIN', 'ASESOR', 'TECNICO'], icon: 'inbox' },
     { label: 'Admin', path: '/admin', roles: ['ADMIN'], icon: 'settings' },
     { label: 'Balance', path: '/balance', roles: ['ADMIN'], icon: 'scale' },

@@ -19,6 +19,10 @@ import type { Aseguradora } from '../../core/models/catalogo.model';
 import type { CategoriaConItems, ItemCosto, PlantillaPdfCobro } from '../../core/models/costo.model';
 import { returnLabel, safeReturnTo } from '../../shared/nav-return';
 import { SkeletonComponent } from '../../shared/skeleton.component';
+import {
+  ConfirmDialogComponent,
+  type ConfirmDialogPayload,
+} from '../../shared/confirm-dialog.component';
 
 type CatForm = { nombre: string; descripcion: string };
 type ItemForm = {
@@ -57,6 +61,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
     LucideTrash2,
     LucideX,
     SkeletonComponent,
+    ConfirmDialogComponent,
   ],
   template: `
     <main class="mx-auto max-w-6xl px-6 py-8">
@@ -642,7 +647,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
             </section>
           } @empty {
             <p class="rounded-lg border border-dashed border-slate-300 bg-white/70 px-6 py-10 text-center text-sm text-brand-soft">
-              No hay categorías. Crea la primera (Hogar, Apartamento, etc.).
+              No hay categorías. Crea la primera (Plomería, Electricidad…).
             </p>
           }
         </div>
@@ -663,7 +668,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                   [(ngModel)]="catForm.nombre"
                   name="catNombre"
                   required
-                  placeholder="Ej. Hogar, Apartamento…"
+                  placeholder="Ej. Plomería, Electricidad…"
                 />
               </label>
               <label class="block">
@@ -854,6 +859,13 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
           </div>
         </div>
       }
+
+      <app-confirm-dialog
+        [payload]="confirmDialog()"
+        [busy]="!!deletingId() || saving()"
+        (cancelled)="cerrarConfirmDialog()"
+        (confirmed)="ejecutarConfirmDialog()"
+      />
     </main>
   `,
   styles: [
@@ -963,6 +975,9 @@ export class CostosComponent implements OnInit {
   readonly saving = signal(false);
   readonly deletingId = signal<string | null>(null);
   readonly error = signal<string | null>(null);
+  /** Confirmación in-app (reemplaza window.confirm). */
+  readonly confirmDialog = signal<ConfirmDialogPayload | null>(null);
+  private pendingConfirm: (() => void) | null = null;
   readonly categorias = signal<CategoriaConItems[]>([]);
   readonly aseguradoras = signal<Aseguradora[]>([]);
   /** '' = plantilla general; otherwise aseguradora id */
@@ -1152,18 +1167,32 @@ export class CostosComponent implements OnInit {
   }
 
   deleteAseguradora(a: Aseguradora): void {
-    if (!confirm(`¿Eliminar aseguradora "${a.nombre}"?`)) return;
-    this.deletingId.set(a.id);
-    this.catalogos.deleteAseguradora(a.id).subscribe({
-      next: () => {
-        this.deletingId.set(null);
-        this.loadAseguradoras();
+    this.pedirConfirmacion(
+      {
+        title: '¿Eliminar aseguradora?',
+        lines: [
+          `Aseguradora: ${a.nombre}`,
+          'Se quitará del catálogo. No se eliminan casos históricos.',
+        ],
+        confirmLabel: 'Eliminar',
+        danger: true,
       },
-      error: (err) => {
-        this.deletingId.set(null);
-        this.error.set(err?.error?.message ?? 'No se pudo eliminar');
+      () => {
+        this.deletingId.set(a.id);
+        this.catalogos.deleteAseguradora(a.id).subscribe({
+          next: () => {
+            this.deletingId.set(null);
+            this.cerrarConfirmDialog();
+            this.loadAseguradoras();
+          },
+          error: (err) => {
+            this.deletingId.set(null);
+            this.cerrarConfirmDialog();
+            this.error.set(err?.error?.message ?? 'No se pudo eliminar');
+          },
+        });
       },
-    });
+    );
   }
 
   /** Abre chat de WhatsApp (solo dígitos, con código país si viene). */
@@ -1254,20 +1283,32 @@ export class CostosComponent implements OnInit {
   deletePlantillaOverride(): void {
     const p = this.plantillaForm;
     if (!p?.id || !this.plantillaScopeId()) return;
-    if (!confirm('¿Quitar los extras de esta aseguradora? La cabecera no cambia.')) {
-      return;
-    }
-    this.saving.set(true);
-    this.costos.deletePlantillaPdf(p.id).subscribe({
-      next: () => {
-        this.saving.set(false);
-        this.loadPlantilla(this.plantillaScopeId() || null);
+    this.pedirConfirmacion(
+      {
+        title: '¿Quitar extras de aseguradora?',
+        lines: [
+          'Se eliminan solo los extras de esta aseguradora.',
+          'La cabecera unificada no cambia.',
+        ],
+        confirmLabel: 'Quitar extras',
+        danger: true,
       },
-      error: (err) => {
-        this.saving.set(false);
-        this.error.set(err?.error?.message ?? 'No se pudieron quitar los extras');
+      () => {
+        this.saving.set(true);
+        this.costos.deletePlantillaPdf(p.id).subscribe({
+          next: () => {
+            this.saving.set(false);
+            this.cerrarConfirmDialog();
+            this.loadPlantilla(this.plantillaScopeId() || null);
+          },
+          error: (err) => {
+            this.saving.set(false);
+            this.cerrarConfirmDialog();
+            this.error.set(err?.error?.message ?? 'No se pudieron quitar los extras');
+          },
+        });
       },
-    });
+    );
   }
 
   descargarPdfPrueba(): void {
@@ -1363,24 +1404,38 @@ export class CostosComponent implements OnInit {
   }
 
   confirmDeleteCat(cat: CategoriaConItems): void {
-    const msg =
+    const lines =
       cat.items.length > 0
-        ? `¿Eliminar "${cat.nombre}" y sus ${cat.items.length} ítems?`
-        : `¿Eliminar la categoría "${cat.nombre}"?`;
-    if (!confirm(msg)) return;
+        ? [
+            `Categoría: ${cat.nombre}`,
+            `También se eliminarán ${cat.items.length} ítem(s) asociados.`,
+          ]
+        : [`Categoría: ${cat.nombre}`, 'No tiene ítems asociados.'];
 
-    this.deletingId.set(cat.id);
-    this.costos.deleteCategoria(cat.id).subscribe({
-      next: () => {
-        this.deletingId.set(null);
-        if (this.filtroCat() === cat.id) this.filtroCat.set(null);
-        this.reload();
+    this.pedirConfirmacion(
+      {
+        title: '¿Eliminar categoría?',
+        lines,
+        confirmLabel: 'Eliminar',
+        danger: true,
       },
-      error: (err) => {
-        this.deletingId.set(null);
-        this.error.set(err?.error?.message ?? 'No se pudo eliminar la categoría');
+      () => {
+        this.deletingId.set(cat.id);
+        this.costos.deleteCategoria(cat.id).subscribe({
+          next: () => {
+            this.deletingId.set(null);
+            this.cerrarConfirmDialog();
+            if (this.filtroCat() === cat.id) this.filtroCat.set(null);
+            this.reload();
+          },
+          error: (err) => {
+            this.deletingId.set(null);
+            this.cerrarConfirmDialog();
+            this.error.set(err?.error?.message ?? 'No se pudo eliminar la categoría');
+          },
+        });
       },
-    });
+    );
   }
 
   openItemCreate(categoriaId: string): void {
@@ -1449,17 +1504,42 @@ export class CostosComponent implements OnInit {
   }
 
   confirmDeleteItem(item: ItemCosto): void {
-    if (!confirm(`¿Eliminar el ítem "${item.nombre}"?`)) return;
-    this.deletingId.set(item.id);
-    this.costos.deleteItem(item.id).subscribe({
-      next: () => {
-        this.deletingId.set(null);
-        this.reload();
+    this.pedirConfirmacion(
+      {
+        title: '¿Eliminar ítem?',
+        lines: [`Ítem: ${item.nombre}`, 'Se quitará del catálogo de tarifas.'],
+        confirmLabel: 'Eliminar',
+        danger: true,
       },
-      error: (err) => {
-        this.deletingId.set(null);
-        this.error.set(err?.error?.message ?? 'No se pudo eliminar el ítem');
+      () => {
+        this.deletingId.set(item.id);
+        this.costos.deleteItem(item.id).subscribe({
+          next: () => {
+            this.deletingId.set(null);
+            this.cerrarConfirmDialog();
+            this.reload();
+          },
+          error: (err) => {
+            this.deletingId.set(null);
+            this.cerrarConfirmDialog();
+            this.error.set(err?.error?.message ?? 'No se pudo eliminar el ítem');
+          },
+        });
       },
-    });
+    );
+  }
+
+  private pedirConfirmacion(payload: ConfirmDialogPayload, onConfirm: () => void): void {
+    this.pendingConfirm = onConfirm;
+    this.confirmDialog.set(payload);
+  }
+
+  cerrarConfirmDialog(): void {
+    this.confirmDialog.set(null);
+    this.pendingConfirm = null;
+  }
+
+  ejecutarConfirmDialog(): void {
+    this.pendingConfirm?.();
   }
 }
