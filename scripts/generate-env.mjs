@@ -45,8 +45,8 @@ if (onVercel && /localhost|127\.0\.0\.1/i.test(apiUrl)) {
   process.exit(1);
 }
 
-// Nunca demos en builds CI/Vercel (ng serve usa environment.ts con demos).
-const showDemos = false;
+// Demos en QA/Preview; nunca en Production.
+const showDemos = appEnv !== 'prod';
 
 const content = `/** Auto-generado por scripts/generate-env.mjs — no editar a mano en CI. */
 export type AppDeployEnv = 'local' | 'qa' | 'prod';

@@ -8,6 +8,7 @@
     "build": "ng build",
     "build:qa": "ng build --configuration=qa",
     "build:prod": "ng build --configuration=production",
+    "build:vercel": "node scripts/vercel-build.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
