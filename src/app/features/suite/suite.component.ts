@@ -139,9 +139,9 @@ import { readSquareLogoFile } from '../../core/utils/logo-file';
         } @else if (!empresas().length) {
           <p class="text-sm text-brand-soft">Aún no hay empresas.</p>
         } @else {
-          <div class="overflow-x-auto border border-slate-200">
-            <table class="w-full min-w-[720px] text-left text-sm">
-              <thead class="bg-slate-50 text-xs uppercase tracking-wide text-brand-soft">
+          <div class="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+            <table class="w-full min-w-[720px] text-left text-sm bg-white">
+              <thead class="bg-white text-xs uppercase tracking-wide text-brand-soft border-b border-slate-200">
                 <tr>
                   <th class="px-4 py-3 font-semibold">Empresa</th>
                   <th class="px-4 py-3 font-semibold">NIT</th>
@@ -149,21 +149,21 @@ import { readSquareLogoFile } from '../../core/utils/logo-file';
                   <th class="px-4 py-3 font-semibold">Acciones</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-slate-100">
+              <tbody class="divide-y divide-slate-100 bg-white">
                 @for (e of empresas(); track e.id) {
-                  <tr [class.bg-accent-soft]="selectedEmpresaId() === e.id">
+                  <tr
+                    class="bg-white"
+                    [class.!bg-accent-soft]="selectedEmpresaId() === e.id"
+                  >
                     <td class="px-4 py-3">
                       <div class="flex items-center gap-3">
                         <div
                           class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-white"
-                          [class.border-dashed]="!e.logoDataUrl"
-                          [class.border-2]="!e.logoDataUrl"
-                          [class.bg-slate-50]="!e.logoDataUrl"
                         >
                           @if (e.logoDataUrl) {
                             <img [src]="e.logoDataUrl" alt="" class="h-full w-full object-cover" />
                           } @else {
-                            <span class="text-lg font-light leading-none text-slate-400">+</span>
+                            <span class="text-lg font-light leading-none text-slate-300">+</span>
                           }
                         </div>
                         <span class="font-medium text-brand-ink">{{ e.nombre }}</span>
