@@ -190,14 +190,16 @@ import { readSquareLogoFile } from '../../core/utils/logo-file';
                         >
                           {{ selectedEmpresaId() === e.id ? 'Usuarios ✓' : 'Ver usuarios' }}
                         </button>
-                        <button
-                          type="button"
-                          class="btn-danger"
-                          [disabled]="!e.canDelete || deletingId() === e.id"
-                          (click)="deleteEmpresa(e)"
-                        >
-                          {{ deletingId() === e.id ? 'Eliminando…' : 'Eliminar' }}
-                        </button>
+                        @if (e.canDelete) {
+                          <button
+                            type="button"
+                            class="btn-danger"
+                            [disabled]="deletingId() === e.id"
+                            (click)="deleteEmpresa(e)"
+                          >
+                            {{ deletingId() === e.id ? 'Eliminando…' : 'Eliminar' }}
+                          </button>
+                        }
                       </div>
                     </td>
                   </tr>
@@ -205,13 +207,11 @@ import { readSquareLogoFile } from '../../core/utils/logo-file';
               </tbody>
             </table>
           </div>
-          <p class="mt-2 text-[11px] text-slate-500">
-            @if (canDeleteAny()) {
-              En QA/local puedes eliminar tenants. En PROD no.
-            } @else {
-              Eliminar tenants no disponible en PROD.
-            }
-          </p>
+          @if (canDeleteAny()) {
+            <p class="mt-2 text-[11px] text-slate-500">
+              En QA/local puedes eliminar tenants. En PROD el botón no se muestra.
+            </p>
+          }
         }
       </section>
 
