@@ -1,6 +1,6 @@
-/**
- * Valores por defecto (local / commit).
- * En Vercel el script `scripts/generate-env.mjs` los sobrescribe antes del build.
- */
-export const runtimeApiUrl = 'http://localhost:3000/api';
-export const runtimeShowDemos = true;
+/** Auto-generado por scripts/generate-env.mjs — no editar a mano en CI. */
+export type AppDeployEnv = 'local' | 'qa' | 'prod';
+
+export const runtimeApiUrl = "http://localhost:3000/api";
+export const runtimeShowDemos = false;
+export const runtimeAppEnv: AppDeployEnv = "local";
