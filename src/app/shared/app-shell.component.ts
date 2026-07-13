@@ -1,5 +1,6 @@
 import {
   Component,
+  DestroyRef,
   ElementRef,
   HostListener,
   OnInit,
@@ -17,8 +18,10 @@ import {
   LucideScale,
   LucideSettings,
   LucideUser,
+  LucideUsers,
 } from '@lucide/angular';
 import { AuthService } from '../core/services/auth.service';
+import { EmpresasService } from '../core/services/empresas.service';
 import type { Role } from '../core/models/user.model';
 import { environment } from '../../environments/environment';
 import { formatAppVersion } from '../core/version';
@@ -27,7 +30,7 @@ interface NavItem {
   label: string;
   path: string;
   roles: Role[];
-  icon: 'inbox' | 'settings' | 'scale';
+  icon: 'inbox' | 'settings' | 'scale' | 'users';
 }
 
 @Component({
@@ -43,6 +46,7 @@ interface NavItem {
     LucideScale,
     LucideSettings,
     LucideUser,
+    LucideUsers,
   ],
   template: `
     <div class="min-h-screen flex flex-col">
@@ -54,7 +58,7 @@ interface NavItem {
       <header class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur">
         <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
           <div class="flex min-w-0 items-center gap-8">
-            <!-- SUPER_ADMIN: marca sin link (no manda a Home/Suite) -->
+            <!-- SUPER_ADMIN: marca Ally; tenants: logo de su empresa -->
             @if (auth.hasRole('SUPER_ADMIN')) {
               <div class="flex min-w-0 shrink-0 items-center gap-2.5">
                 <img
@@ -72,14 +76,27 @@ interface NavItem {
                 </span>
               </div>
             } @else {
-              <a routerLink="/home" class="flex min-w-0 shrink-0 items-center gap-2.5">
-                <img
-                  src="/icon.png"
-                  alt=""
-                  class="h-9 w-9 shrink-0 rounded-lg object-cover shadow-sm"
-                  width="36"
-                  height="36"
-                />
+              <a
+                [routerLink]="tenantLogoLink()"
+                class="flex min-w-0 shrink-0 items-center gap-2.5"
+                [attr.title]="!tenantLogo() && canEditTenantLogo() ? 'Agregar logo de empresa' : null"
+              >
+                @if (tenantLogo(); as logo) {
+                  <img
+                    [src]="logo"
+                    alt=""
+                    class="h-9 w-9 shrink-0 rounded-lg object-cover shadow-sm"
+                    width="36"
+                    height="36"
+                  />
+                } @else {
+                  <span
+                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 text-xl font-light leading-none text-slate-400"
+                    [class.hover:border-brand]="canEditTenantLogo()"
+                    [class.hover:text-brand]="canEditTenantLogo()"
+                    >+</span
+                  >
+                }
                 <span class="min-w-0 leading-tight">
                   <span class="block truncate text-base font-semibold text-brand-ink sm:text-lg">
                     {{ auth.currentUser?.empresaNombre || 'Ally Flow' }}
@@ -106,6 +123,9 @@ interface NavItem {
                     }
                     @case ('scale') {
                       <svg lucideScale [size]="15"></svg>
+                    }
+                    @case ('users') {
+                      <svg lucideUsers [size]="15"></svg>
                     }
                   }
                   {{ item.label }}
@@ -162,20 +182,23 @@ interface NavItem {
                         @case ('scale') {
                           <svg lucideScale [size]="15"></svg>
                         }
+                        @case ('users') {
+                          <svg lucideUsers [size]="15"></svg>
+                        }
                       }
                       {{ item.label }}
                     </a>
                   }
                 </div>
-                <button
-                  type="button"
+                <a
+                  routerLink="/perfil"
                   class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-brand-soft hover:bg-surface-muted"
                   role="menuitem"
-                  disabled
+                  (click)="menuOpen.set(false)"
                 >
                   <svg lucideUser [size]="15"></svg>
-                  Perfil (próximamente)
-                </button>
+                  Perfil
+                </a>
                 <button
                   type="button"
                   class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold text-red-700 hover:bg-red-50"
@@ -229,6 +252,8 @@ interface NavItem {
 export class AppShellComponent implements OnInit {
   readonly auth = inject(AuthService);
   private readonly http = inject(HttpClient);
+  private readonly empresasApi = inject(EmpresasService);
+  private readonly destroyRef = inject(DestroyRef);
   readonly menuOpen = signal(false);
   private readonly menuRoot = viewChild<ElementRef<HTMLElement>>('menuRoot');
   readonly appEnv = environment.appEnv;
@@ -236,21 +261,35 @@ export class AppShellComponent implements OnInit {
     environment.appEnv === 'prod' ? 'PROD' : environment.appEnv === 'qa' ? 'QA' : 'LOCAL';
   readonly appVersion = formatAppVersion();
   readonly apiVersion = signal<string | null>(null);
+  readonly tenantLogo = signal<string | null>(null);
 
   readonly apiVersionLabel = computed(() => {
     const v = this.apiVersion();
     return v ? `v${v}` : '…';
   });
 
+  canEditTenantLogo(): boolean {
+    const u = this.auth.currentUser;
+    return Boolean(u?.role === 'ADMIN' && u.esOwner);
+  }
+
+  /** Sin logo: OWNER va a Perfil para subirlo; resto a bandeja. */
+  tenantLogoLink(): string {
+    if (!this.tenantLogo() && this.canEditTenantLogo()) return '/perfil';
+    return '/home';
+  }
+
   private readonly allNav: NavItem[] = [
-    { label: 'Suite', path: '/suite', roles: ['SUPER_ADMIN'], icon: 'settings' },
     { label: 'Bandeja', path: '/home', roles: ['ADMIN', 'ASESOR', 'TECNICO'], icon: 'inbox' },
+    { label: 'Suite', path: '/suite', roles: ['SUPER_ADMIN'], icon: 'settings' },
+    { label: 'Usuarios', path: '/usuarios', roles: ['ADMIN'], icon: 'users' },
     { label: 'Admin', path: '/admin', roles: ['ADMIN'], icon: 'settings' },
     { label: 'Balance', path: '/balance', roles: ['ADMIN'], icon: 'scale' },
   ];
 
   readonly navItems = computed(() => {
-    const role = this.auth.currentUser?.role;
+    const u = this.auth.currentUser;
+    const role = u?.role;
     if (!role) return [];
     return this.allNav.filter((n) => n.roles.includes(role));
   });
@@ -268,6 +307,29 @@ export class AppShellComponent implements OnInit {
     this.http.get<{ version?: string }>(`${environment.apiUrl}/health`).subscribe({
       next: (h) => this.apiVersion.set(h.version ?? null),
       error: () => this.apiVersion.set(null),
+    });
+    this.loadTenantLogo();
+    window.addEventListener('ally-empresa-logo', this.onLogoEvent);
+    this.destroyRef.onDestroy(() => {
+      window.removeEventListener('ally-empresa-logo', this.onLogoEvent);
+    });
+  }
+
+  private readonly onLogoEvent = (ev: Event): void => {
+    const detail = (ev as CustomEvent<string | null>).detail;
+    if (detail) this.tenantLogo.set(detail);
+    else this.loadTenantLogo();
+  };
+
+  private loadTenantLogo(): void {
+    if (this.auth.hasRole('SUPER_ADMIN')) {
+      this.tenantLogo.set(null);
+      return;
+    }
+    if (!this.auth.isAuthenticated()) return;
+    this.empresasApi.me().subscribe({
+      next: (e) => this.tenantLogo.set(e.logoDataUrl),
+      error: () => this.tenantLogo.set(null),
     });
   }
 

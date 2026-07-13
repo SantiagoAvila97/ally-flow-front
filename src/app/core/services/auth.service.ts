@@ -39,6 +39,10 @@ export class AuthService {
 
   hydrateSession(): Observable<User | null> {
     localStorage.removeItem(LEGACY_TOKEN_KEY);
+    // Sin user local → no hay sesión previa; no llamar /me (evita 401 ruidoso en login).
+    if (!this.readStoredUser()) {
+      return of(null);
+    }
     return this.http.get<{ user: User }>(`${environment.apiUrl}/auth/me`).pipe(
       tap((res) => {
         this.persistUser(res.user);
@@ -107,6 +111,13 @@ export class AuthService {
     const user = this.currentUser;
     if (!user?.permissions?.length) return false;
     return perms.every((p) => user.permissions.includes(p));
+  }
+
+  changePassword(currentPassword: string, newPassword: string): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>(`${environment.apiUrl}/auth/change-password`, {
+      currentPassword,
+      newPassword,
+    });
   }
 
   private persistUser(user: User): void {

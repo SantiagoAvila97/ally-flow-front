@@ -1,4 +1,4 @@
-import { DecimalPipe, NgClass } from '@angular/common';
+﻿import { DecimalPipe, NgClass } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -78,7 +78,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
           <h1 class="text-3xl font-semibold text-brand-ink">Admin</h1>
           <p class="mt-1 text-brand-soft/80">
             Catálogos y tarifas de {{ auth.currentUser?.empresaNombre }}: costos, factura de cobro y
-            aseguradoras.
+            clientes.
           </p>
         </div>
         @if (tab() === 'tarifas') {
@@ -90,7 +90,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
         @if (tab() === 'aseguradoras') {
           <button type="button" class="btn-primary" (click)="openAsegCreate()">
             <svg lucidePlus [size]="16"></svg>
-            Nueva aseguradora
+            Nuevo cliente
           </button>
         }
       </div>
@@ -118,7 +118,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
           [class.tab-active]="tab() === 'aseguradoras'"
           (click)="openAsegTab()"
         >
-          Aseguradoras
+          Clientes
         </button>
       </div>
 
@@ -131,7 +131,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
           <div class="mb-4">
             <h2 class="text-lg font-semibold text-brand-ink">Factura para cobro</h2>
             <p class="mt-0.5 text-sm text-brand-soft/80">
-              Una sola cabecera para todas las aseguradoras. Si alguna pide datos extra, configúralos
+              Una sola cabecera para todos los clientes. Si alguno pide datos extra, configúralos
               abajo sin cambiar el resto del documento.
             </p>
           </div>
@@ -145,7 +145,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                   <h3 class="text-sm font-semibold text-brand-ink">Cabecera (todas)</h3>
                   <div class="grid gap-4 sm:grid-cols-2">
                     <label class="block sm:col-span-2">
-                      <span class="mb-1 block text-sm font-medium">Razón social</span>
+                      <span class="mb-1 block text-sm font-medium">Razón social *</span>
                       <input class="field" [(ngModel)]="plantillaForm.razonSocial" name="razon" required />
                     </label>
                     <label class="block">
@@ -165,20 +165,26 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                       <input class="field" [(ngModel)]="plantillaForm.email" name="email" />
                     </label>
                     <label class="block">
-                      <span class="mb-1 block text-sm font-medium">Color acento</span>
-                      <input
-                        class="field"
-                        [(ngModel)]="plantillaForm.colorAcento"
-                        name="color"
-                        placeholder="#0f766e"
-                      />
-                    </label>
-                    <label class="block sm:col-span-2">
-                      <span class="mb-1 block text-sm font-medium">Tipo de documento</span>
-                      <select class="field" [(ngModel)]="plantillaForm.tipoPlantilla" name="tipo">
-                        <option value="tabla_operativa">Tabla operativa</option>
-                        <option value="carta_siniestro">Carta de siniestro</option>
-                      </select>
+                      <span class="mb-1 block text-sm font-medium">Color acento *</span>
+                      <div class="flex items-center gap-2">
+                        <input
+                          type="color"
+                          class="h-10 w-12 cursor-pointer rounded border border-slate-200 bg-white p-1"
+                          [ngModel]="colorPickerValue()"
+                          (ngModelChange)="onColorPicker($event)"
+                          name="colorPicker"
+                          title="Elegir color"
+                        />
+                        <input
+                          class="field font-mono"
+                          [(ngModel)]="plantillaForm.colorAcento"
+                          name="color"
+                          placeholder="#0f766e"
+                        />
+                      </div>
+                      <p class="mt-1 text-[11px] text-slate-500">
+                        Mismo formato de factura (estilo Full Soluciones). Solo cambia el color.
+                      </p>
                     </label>
                     <label class="block sm:col-span-2">
                       <span class="mb-1 block text-sm font-medium">Título del documento</span>
@@ -198,14 +204,14 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                 <div class="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
                   <div class="flex flex-wrap items-end justify-between gap-3">
                     <div>
-                      <h3 class="text-sm font-semibold text-brand-ink">Extras por aseguradora</h3>
+                      <h3 class="text-sm font-semibold text-brand-ink">Extras por cliente</h3>
                       <p class="mt-0.5 text-xs text-brand-soft/80">
-                        Opcional. Solo se agregan al PDF si esa aseguradora lo requiere.
+                        Opcional. Solo se agregan al PDF si ese cliente lo requiere.
                       </p>
                     </div>
                     <label class="block min-w-[200px]">
                       <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Aseguradora
+                        Cliente
                       </span>
                       <select
                         class="field"
@@ -238,7 +244,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                           class="field"
                           [(ngModel)]="plantillaForm.extras.codigoProveedor"
                           name="codigoProv"
-                          placeholder="Si la aseguradora te asignó uno"
+                          placeholder="Si el cliente te asignó uno"
                         />
                       </label>
                       <label class="block sm:col-span-2">
@@ -258,17 +264,22 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                         [disabled]="saving()"
                         (click)="deletePlantillaOverride()"
                       >
-                        Quitar extras de esta aseguradora
+                        Quitar extras de este cliente
                       </button>
                     }
                   } @else {
                     <p class="text-sm text-slate-500">
-                      Elige una aseguradora para agregar datos opcionales sin cambiar la cabecera.
+                      Elige un cliente para agregar datos opcionales sin cambiar la cabecera.
                     </p>
                   }
                 </div>
 
                 <div class="flex flex-wrap justify-end gap-2">
+                  @if (plantillaTieneCambiosSinGuardar()) {
+                    <p class="mr-auto self-center text-sm text-amber-700">
+                      Hay cambios sin guardar (p. ej. el color). Guarda antes de generar el PDF.
+                    </p>
+                  }
                   <button
                     type="button"
                     class="btn-ghost border border-slate-200"
@@ -322,7 +333,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                 </div>
                 <div
                   class="invoice-preview overflow-hidden rounded-md bg-white shadow-soft"
-                  [style.border-top]="'4px solid ' + (plantillaForm.colorAcento || '#0f766e')"
+                  [style.border-top]="'2px solid ' + (plantillaForm.colorAcento || '#0f766e')"
                 >
                   <div class="space-y-3 p-5 text-[11px] leading-relaxed text-slate-700 sm:text-xs">
                     <div>
@@ -342,15 +353,6 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                     >
                       {{ plantillaForm.textoHeader || 'Factura para cobro' }}
                     </p>
-
-                    @if (plantillaForm.tipoPlantilla === 'carta_siniestro') {
-                      <p class="text-slate-600">
-                        Estimados señores de
-                        <strong>{{ scopeAseguradoraNombre() || 'la aseguradora' }}</strong>, nos
-                        permitimos presentar la liquidación de honorarios correspondiente al servicio
-                        de campo descrito a continuación.
-                      </p>
-                    }
 
                     <div class="rounded border border-slate-100 bg-slate-50 px-3 py-2 text-slate-600">
                       <p><strong>Caso:</strong> Inspección demo — vista previa</p>
@@ -388,36 +390,34 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                       </div>
                     }
 
-                    @if (plantillaForm.tipoPlantilla === 'tabla_operativa') {
-                      <table class="w-full border-collapse text-left">
-                        <thead>
-                          <tr class="border-b border-slate-200 text-[10px] uppercase text-slate-500">
-                            <th class="py-1.5 pr-2">Ítem</th>
-                            <th class="py-1.5 pr-2 text-right">Cant.</th>
-                            <th class="py-1.5 text-right">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr class="border-b border-slate-50">
-                            <td class="py-1.5 pr-2">Visita técnica</td>
-                            <td class="py-1.5 pr-2 text-right tabular-nums">1</td>
-                            <td class="py-1.5 text-right tabular-nums">$120.000</td>
-                          </tr>
-                          <tr class="border-b border-slate-50">
-                            <td class="py-1.5 pr-2">Destape de desagüe</td>
-                            <td class="py-1.5 pr-2 text-right tabular-nums">1</td>
-                            <td class="py-1.5 text-right tabular-nums">$180.000</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                      <p class="text-right text-sm font-bold text-brand-ink">Total $300.000</p>
-                    } @else {
-                      <ul class="list-disc space-y-1 pl-4 text-slate-600">
-                        <li>Visita técnica — $120.000</li>
-                        <li>Destape de desagüe — $180.000</li>
-                      </ul>
-                      <p class="font-bold text-brand-ink">Total a cobrar: $300.000 COP</p>
-                    }
+                    <table class="w-full border-collapse text-left">
+                      <thead>
+                        <tr
+                          class="text-[10px] uppercase text-white"
+                          [style.background]="plantillaForm.colorAcento || '#0f766e'"
+                        >
+                          <th class="px-2 py-1.5">#</th>
+                          <th class="px-2 py-1.5">Descripción</th>
+                          <th class="px-2 py-1.5 text-right">Cant.</th>
+                          <th class="px-2 py-1.5 text-right">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr class="border-b border-slate-50 bg-slate-50">
+                          <td class="px-2 py-1.5">1</td>
+                          <td class="px-2 py-1.5">Visita técnica</td>
+                          <td class="px-2 py-1.5 text-right tabular-nums">1</td>
+                          <td class="px-2 py-1.5 text-right tabular-nums">$120.000</td>
+                        </tr>
+                        <tr class="border-b border-slate-50">
+                          <td class="px-2 py-1.5">2</td>
+                          <td class="px-2 py-1.5">Destape de desagüe</td>
+                          <td class="px-2 py-1.5 text-right tabular-nums">1</td>
+                          <td class="px-2 py-1.5 text-right tabular-nums">$180.000</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <p class="text-right text-sm font-bold text-brand-ink">Total $300.000</p>
 
                     <p class="border-t border-slate-100 pt-3 text-[10px] text-slate-400">
                       {{ plantillaForm.textoFooter || 'Pie de documento' }}
@@ -489,7 +489,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                     </tr>
                   } @empty {
                     <tr>
-                      <td colspan="7" class="px-4 py-8 text-center text-slate-500">Sin aseguradoras.</td>
+                      <td colspan="7" class="px-4 py-8 text-center text-slate-500">Sin clientes.</td>
                     </tr>
                   }
                 </tbody>
@@ -535,7 +535,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                 <div class="flex flex-wrap gap-1">
                   <button
                     type="button"
-                    class="btn-ghost !px-2.5 text-sm"
+                    class="btn-primary !px-2.5 !py-1.5 text-sm"
                     (click)="openItemCreate(cat.id)"
                     title="Agregar ítem"
                   >
@@ -662,7 +662,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
             </h3>
             <form class="mt-4 space-y-4" (ngSubmit)="saveCategoria()">
               <label class="block">
-                <span class="mb-1 block text-sm font-medium">Nombre</span>
+                <span class="mb-1 block text-sm font-medium">Nombre *</span>
                 <input
                   class="field"
                   [(ngModel)]="catForm.nombre"
@@ -709,7 +709,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
             </h3>
             <form class="mt-4 space-y-4" (ngSubmit)="saveItem()">
               <label class="block">
-                <span class="mb-1 block text-sm font-medium">Categoría</span>
+                <span class="mb-1 block text-sm font-medium">Categoría *</span>
                 <select class="field" [(ngModel)]="itemForm.categoriaId" name="itemCat" required>
                   @for (c of categorias(); track c.id) {
                     <option [value]="c.id">{{ c.nombre }}</option>
@@ -717,7 +717,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                 </select>
               </label>
               <label class="block">
-                <span class="mb-1 block text-sm font-medium">Nombre</span>
+                <span class="mb-1 block text-sm font-medium">Nombre *</span>
                 <input
                   class="field"
                   [(ngModel)]="itemForm.nombre"
@@ -737,7 +737,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
               </label>
               <div class="grid gap-4 sm:grid-cols-3">
                 <label class="block">
-                  <span class="mb-1 block text-sm font-medium">Costo interno</span>
+                  <span class="mb-1 block text-sm font-medium">Costo interno *</span>
                   <input
                     class="field"
                     type="number"
@@ -748,7 +748,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                   />
                 </label>
                 <label class="block">
-                  <span class="mb-1 block text-sm font-medium">Precio sugerido</span>
+                  <span class="mb-1 block text-sm font-medium">Precio sugerido *</span>
                   <input
                     class="field"
                     type="number"
@@ -797,11 +797,11 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
         <div class="modal-backdrop" (click)="closeCatalogModal()">
           <div class="modal-panel modal-panel-wide" (click)="$event.stopPropagation()" role="dialog">
             <h3 class="text-lg font-semibold text-brand-ink">
-              {{ editingCatalogId() ? 'Editar aseguradora' : 'Nueva aseguradora' }}
+              {{ editingCatalogId() ? 'Editar cliente' : 'Nuevo cliente' }}
             </h3>
             <form class="mt-4 space-y-4" (ngSubmit)="saveCatalog()">
               <label class="block">
-                <span class="mb-1 block text-sm font-medium">Nombre</span>
+                <span class="mb-1 block text-sm font-medium">Nombre *</span>
                 <input class="field" [(ngModel)]="catalogForm.nombre" name="catNombre" required />
               </label>
               <label class="block">
@@ -992,6 +992,8 @@ export class CostosComponent implements OnInit {
   readonly editingCatalogId = signal<string | null>(null);
 
   plantillaForm: PlantillaPdfCobro | null = null;
+  /** Snapshot de lo último guardado/cargado; si difiere del form, hay que Guardar antes del PDF. */
+  private plantillaSavedSnapshot: string | null = null;
 
   catForm: CatForm = { nombre: '', descripcion: '' };
   itemForm: ItemForm = {
@@ -1040,6 +1042,50 @@ export class CostosComponent implements OnInit {
     );
   }
 
+  /** Valor seguro para `<input type="color">` (requiere #rrggbb). */
+  colorPickerValue(): string {
+    const raw = (this.plantillaForm?.colorAcento || '#0f766e').trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(raw)) return raw.toLowerCase();
+    if (/^#[0-9a-fA-F]{3}$/.test(raw)) {
+      const h = raw.slice(1);
+      return `#${h[0]}${h[0]}${h[1]}${h[1]}${h[2]}${h[2]}`.toLowerCase();
+    }
+    return '#0f766e';
+  }
+
+  onColorPicker(hex: string): void {
+    if (!this.plantillaForm) return;
+    this.plantillaForm.colorAcento = hex;
+  }
+
+  /** Campos de plantilla que afectan el PDF (comparados vs último guardado). */
+  private plantillaSnapshotPayload(p: PlantillaPdfCobro): string {
+    return JSON.stringify({
+      razonSocial: p.razonSocial?.trim() ?? '',
+      nit: p.nit?.trim() ?? '',
+      ciudad: p.ciudad?.trim() ?? '',
+      telefono: p.telefono?.trim() ?? '',
+      email: p.email?.trim() ?? '',
+      colorAcento: (p.colorAcento || '').trim().toLowerCase(),
+      textoHeader: p.textoHeader?.trim() ?? '',
+      textoFooter: p.textoFooter?.trim() ?? '',
+      extras: {
+        destinatario: p.extras?.destinatario?.trim() ?? '',
+        codigoProveedor: p.extras?.codigoProveedor?.trim() ?? '',
+        notaAdicional: p.extras?.notaAdicional?.trim() ?? '',
+      },
+    });
+  }
+
+  private rememberPlantillaSaved(p: PlantillaPdfCobro): void {
+    this.plantillaSavedSnapshot = this.plantillaSnapshotPayload(p);
+  }
+
+  plantillaTieneCambiosSinGuardar(): boolean {
+    if (!this.plantillaForm || !this.plantillaSavedSnapshot) return false;
+    return this.plantillaSnapshotPayload(this.plantillaForm) !== this.plantillaSavedSnapshot;
+  }
+
   ngOnInit(): void {
     const back = safeReturnTo(this.route.snapshot.queryParamMap.get('returnTo'));
     if (back) {
@@ -1082,7 +1128,7 @@ export class CostosComponent implements OnInit {
         done?.();
       },
       error: (err) => {
-        this.error.set(err?.error?.message ?? 'No se pudieron cargar aseguradoras');
+        this.error.set(err?.error?.message ?? 'No se pudieron cargar clientes');
         done?.();
       },
     });
@@ -1097,7 +1143,7 @@ export class CostosComponent implements OnInit {
       },
       error: (err) => {
         this.catalogLoading.set(false);
-        this.error.set(err?.error?.message ?? 'No se pudieron cargar aseguradoras');
+        this.error.set(err?.error?.message ?? 'No se pudieron cargar clientes');
       },
     });
   }
@@ -1161,7 +1207,7 @@ export class CostosComponent implements OnInit {
       },
       error: (err) => {
         this.saving.set(false);
-        this.error.set(err?.error?.message ?? 'No se pudo guardar la aseguradora');
+        this.error.set(err?.error?.message ?? 'No se pudo guardar el cliente');
       },
     });
   }
@@ -1169,9 +1215,9 @@ export class CostosComponent implements OnInit {
   deleteAseguradora(a: Aseguradora): void {
     this.pedirConfirmacion(
       {
-        title: '¿Eliminar aseguradora?',
+        title: '¿Eliminar cliente?',
         lines: [
-          `Aseguradora: ${a.nombre}`,
+          `Cliente: ${a.nombre}`,
           'Se quitará del catálogo. No se eliminan casos históricos.',
         ],
         confirmLabel: 'Eliminar',
@@ -1213,6 +1259,7 @@ export class CostosComponent implements OnInit {
             notaAdicional: p.extras?.notaAdicional ?? '',
           },
         };
+        this.rememberPlantillaSaved(this.plantillaForm);
         this.plantillaLoading.set(false);
       },
       error: (err) => {
@@ -1236,7 +1283,6 @@ export class CostosComponent implements OnInit {
       colorAcento,
       textoHeader,
       textoFooter,
-      tipoPlantilla,
       extras,
     } = this.plantillaForm;
     this.costos
@@ -1250,7 +1296,7 @@ export class CostosComponent implements OnInit {
         colorAcento,
         textoHeader,
         textoFooter,
-        tipoPlantilla,
+        tipoPlantilla: 'tabla_operativa',
         ...(scope
           ? {
               extras: {
@@ -1271,6 +1317,7 @@ export class CostosComponent implements OnInit {
               notaAdicional: p.extras?.notaAdicional ?? '',
             },
           };
+          this.rememberPlantillaSaved(this.plantillaForm);
           this.saving.set(false);
         },
         error: (err) => {
@@ -1285,9 +1332,9 @@ export class CostosComponent implements OnInit {
     if (!p?.id || !this.plantillaScopeId()) return;
     this.pedirConfirmacion(
       {
-        title: '¿Quitar extras de aseguradora?',
+        title: '¿Quitar extras de cliente?',
         lines: [
-          'Se eliminan solo los extras de esta aseguradora.',
+          'Se eliminan solo los extras de este cliente.',
           'La cabecera unificada no cambia.',
         ],
         confirmLabel: 'Quitar extras',
@@ -1313,6 +1360,12 @@ export class CostosComponent implements OnInit {
 
   descargarPdfPrueba(): void {
     if (!this.plantillaForm) return;
+    if (this.plantillaTieneCambiosSinGuardar()) {
+      this.error.set(
+        'Debes guardar los cambios (incluido el color) antes de generar el nuevo PDF.',
+      );
+      return;
+    }
     this.previewingPdf.set(true);
     this.error.set(null);
     const scope = this.plantillaScopeId() || null;
@@ -1328,7 +1381,7 @@ export class CostosComponent implements OnInit {
         colorAcento: f.colorAcento,
         textoHeader: f.textoHeader,
         textoFooter: f.textoFooter,
-        tipoPlantilla: f.tipoPlantilla,
+        tipoPlantilla: 'tabla_operativa',
         extras: scope
           ? {
               destinatario: f.extras.destinatario ?? '',

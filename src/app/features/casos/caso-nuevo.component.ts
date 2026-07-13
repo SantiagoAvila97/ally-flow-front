@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnDestroy, OnInit, inject, signal, viewChild } from '@angular/core';
+﻿import { Component, ElementRef, OnDestroy, OnInit, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -51,19 +51,19 @@ import { SkeletonComponent } from '../../shared/skeleton.component';
         } @else {
           <form class="mt-8 space-y-5" [formGroup]="form" (ngSubmit)="onSubmit()">
             <label class="block">
-              <span class="mb-1 block text-sm font-medium">Título</span>
+              <span class="mb-1 block text-sm font-medium">Título *</span>
               <input class="field" formControlName="titulo" placeholder="Inspección vehículo — colisión" />
             </label>
 
             <div class="grid gap-5 sm:grid-cols-2">
               <label class="block">
-                <span class="mb-1 block text-sm font-medium">Nº ID aseguradora</span>
+                <span class="mb-1 block text-sm font-medium">Nº ID cliente *</span>
                 <input class="field" formControlName="numeroAseguradora" placeholder="AUTO-88421" />
               </label>
               <label class="block">
-                <span class="mb-1 block text-sm font-medium">Aseguradora</span>
+                <span class="mb-1 block text-sm font-medium">Cliente *</span>
                 <select class="field" formControlName="aseguradora">
-                  <option value="" disabled>Selecciona aseguradora…</option>
+                  <option value="" disabled>Selecciona cliente…</option>
                   @for (a of aseguradoras(); track a.id) {
                     <option [value]="a.nombre">{{ a.nombre }}</option>
                   }
@@ -73,7 +73,7 @@ import { SkeletonComponent } from '../../shared/skeleton.component';
 
             <div class="grid gap-5 sm:grid-cols-2">
               <label class="block">
-                <span class="mb-1 block text-sm font-medium">Titular / contacto</span>
+                <span class="mb-1 block text-sm font-medium">Titular / contacto *</span>
                 <input
                   class="field"
                   formControlName="titularNombre"
@@ -81,14 +81,14 @@ import { SkeletonComponent } from '../../shared/skeleton.component';
                 />
               </label>
               <label class="block">
-                <span class="mb-1 block text-sm font-medium">Teléfono</span>
+                <span class="mb-1 block text-sm font-medium">Teléfono *</span>
                 <input class="field" formControlName="titularTelefono" placeholder="+57 300 123 4567" />
               </label>
             </div>
 
             <div class="grid gap-5 sm:grid-cols-2">
               <label class="block">
-                <span class="mb-1 block text-sm font-medium">Ciudad</span>
+                <span class="mb-1 block text-sm font-medium">Ciudad *</span>
                 <select class="field" formControlName="ciudad">
                   <option value="" disabled>Selecciona ciudad…</option>
                   @for (c of ciudades(); track c.id) {
@@ -98,7 +98,7 @@ import { SkeletonComponent } from '../../shared/skeleton.component';
                 <span class="mt-1 block text-xs text-slate-500">Bogotá y municipios aledaños</span>
               </label>
               <label class="block">
-                <span class="mb-1 block text-sm font-medium">Categoría de servicio</span>
+                <span class="mb-1 block text-sm font-medium">Categoría de servicio *</span>
                 <select class="field" formControlName="categoriaServicio">
                   <option value="" disabled>Selecciona…</option>
                   @for (c of categorias(); track c) {
@@ -109,7 +109,7 @@ import { SkeletonComponent } from '../../shared/skeleton.component';
             </div>
 
             <label class="block">
-              <span class="mb-1 block text-sm font-medium">Dirección del servicio</span>
+              <span class="mb-1 block text-sm font-medium">Dirección del servicio *</span>
               <input
                 class="field"
                 formControlName="direccion"
@@ -360,7 +360,7 @@ export class CasoNuevoComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.catalogosLoading.set(false);
-        this.error.set('No se pudieron cargar aseguradoras, ciudades y categorías');
+        this.error.set('No se pudieron cargar clientes, ciudades y categorías');
       },
     });
 

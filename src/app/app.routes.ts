@@ -28,6 +28,19 @@ export const routes: Routes = [
           import('./features/home/home.component').then((m) => m.HomeComponent),
       },
       {
+        path: 'perfil',
+        loadComponent: () =>
+          import('./features/perfil/perfil.component').then((m) => m.PerfilComponent),
+      },
+      { path: 'empresa', redirectTo: 'perfil', pathMatch: 'full' },
+      {
+        path: 'usuarios',
+        canActivate: [authGuard],
+        data: { roles: ['ADMIN'] },
+        loadComponent: () =>
+          import('./features/usuarios/usuarios.component').then((m) => m.UsuariosComponent),
+      },
+      {
         path: 'admin',
         canActivate: [authGuard],
         data: { roles: ['ADMIN'] },

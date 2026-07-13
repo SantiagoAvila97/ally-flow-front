@@ -10,6 +10,8 @@ export interface User {
   empresaId: string | null;
   empresaNombre: string | null;
   permissions: Permission[];
+  /** OWNER / propietario de la empresa. */
+  esOwner?: boolean;
   /** Unix seconds — fin de sesión. */
   exp?: number;
 }

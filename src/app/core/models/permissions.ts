@@ -5,4 +5,5 @@ export type Permission =
   | 'admin:tarifas'
   | 'admin:catalogos'
   | 'balance:ver'
-  | 'tenant:acceso';
+  | 'tenant:acceso'
+  | 'usuarios:gestionar';

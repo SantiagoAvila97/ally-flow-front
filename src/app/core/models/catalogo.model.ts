@@ -1,5 +1,6 @@
 export interface Aseguradora {
   id: string;
+  empresaId?: string;
   nombre: string;
   nit: string | null;
   personaResponsable: string | null;

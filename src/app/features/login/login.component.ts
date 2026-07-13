@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+﻿import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { LucideChevronDown, LucideLogIn } from '@lucide/angular';
@@ -125,7 +125,7 @@ import type { LoginDemoEmpresa } from './login-demos.types';
 
             <form class="mt-8 space-y-5 text-left" [formGroup]="form" (ngSubmit)="onSubmit()">
               <label class="block">
-                <span class="mb-1.5 block text-sm font-medium text-brand-soft">Email</span>
+                <span class="mb-1.5 block text-sm font-medium text-brand-soft">Email *</span>
                 <input
                   type="email"
                   formControlName="email"
@@ -137,7 +137,7 @@ import type { LoginDemoEmpresa } from './login-demos.types';
               </label>
 
               <label class="block">
-                <span class="mb-1.5 block text-sm font-medium text-brand-soft">Contraseña</span>
+                <span class="mb-1.5 block text-sm font-medium text-brand-soft">Contraseña *</span>
                 <input
                   type="password"
                   formControlName="password"
@@ -206,7 +206,7 @@ import type { LoginDemoEmpresa } from './login-demos.types';
 
                   @if (activeDemo(); as emp) {
                     <ul class="space-y-1">
-                      @for (u of emp.users; track u.role) {
+                      @for (u of emp.users; track u.email) {
                         <li>
                           <button
                             type="button"
@@ -406,7 +406,7 @@ export class LoginComponent implements OnInit, OnDestroy {
     { label: 'Caso #AF-2401', hint: 'Por asignar…' },
     { label: 'En visita', hint: 'Evidencias en campo' },
     { label: 'Por facturar', hint: 'Armando la factura' },
-    { label: 'Factura enviada', hint: 'Espera OK aseguradora' },
+    { label: 'Factura enviada', hint: 'Espera OK cliente' },
     { label: 'Factura sin pagar', hint: 'Pendiente de pago' },
     { label: 'Pagada', hint: 'Balance actualizado' },
   ];
