@@ -82,8 +82,9 @@ interface DemoEmpresa {
 
       <!-- Form panel -->
       <main
-        class="flex min-h-screen items-center justify-center overflow-y-auto px-6 py-10 lg:h-screen lg:min-h-0"
+        class="relative flex min-h-screen items-center justify-center overflow-y-auto px-6 py-10 lg:h-screen lg:min-h-0"
       >
+        <span class="env-badge" [attr.data-env]="appEnv" aria-label="Entorno">{{ envLabel }}</span>
         <div class="mx-auto w-full max-w-md">
           <!-- Mobile brand -->
           <div class="mb-8 lg:hidden">
@@ -333,6 +334,34 @@ interface DemoEmpresa {
       .animate-float-soft {
         animation: floatSoft 4.2s ease-in-out infinite;
       }
+
+      .env-badge {
+        position: absolute;
+        right: 1rem;
+        bottom: 1rem;
+        z-index: 10;
+        display: inline-flex;
+        align-items: center;
+        border-radius: 0.25rem;
+        padding: 0.15rem 0.4rem;
+        font-size: 0.625rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        line-height: 1.2;
+        text-transform: uppercase;
+      }
+      .env-badge[data-env='prod'] {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .env-badge[data-env='qa'] {
+        background: #ffedd5;
+        color: #9a3412;
+      }
+      .env-badge[data-env='local'] {
+        background: #e2e8f0;
+        color: #475569;
+      }
     `,
   ],
 })
@@ -345,6 +374,9 @@ export class LoginComponent implements OnInit, OnDestroy {
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly showDemos = environment.showDemoLogins;
+  readonly appEnv = environment.appEnv;
+  readonly envLabel =
+    environment.appEnv === 'prod' ? 'PROD' : environment.appEnv === 'qa' ? 'QA' : 'LOCAL';
   readonly demosOpen = signal(false);
   readonly demoEmpresa = signal('Full Soluciones');
   readonly liveLabel = signal('Caso #AF-2401');

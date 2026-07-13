@@ -10,6 +10,7 @@ import {
 } from '@lucide/angular';
 import { AuthService } from '../core/services/auth.service';
 import type { Role } from '../core/models/user.model';
+import { environment } from '../../environments/environment';
 
 interface NavItem {
   label: string;
@@ -34,9 +35,11 @@ interface NavItem {
   ],
   template: `
     <div class="min-h-screen flex flex-col">
-      <div class="border-b border-amber-200/80 bg-amber-50 px-4 py-2 text-center text-xs text-amber-950 sm:text-sm">
-        Datos en memoria: al reiniciar el servidor se pierden casos, tarifas y cambios de demo.
-      </div>
+      @if (appEnv === 'local') {
+        <div class="border-b border-amber-200/80 bg-amber-50 px-4 py-2 text-center text-xs text-amber-950 sm:text-sm">
+          Datos en memoria: al reiniciar el servidor se pierden casos, tarifas y cambios de demo.
+        </div>
+      }
       <header class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur">
         <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
           <div class="flex min-w-0 items-center gap-8">
@@ -191,6 +194,7 @@ export class AppShellComponent {
   readonly auth = inject(AuthService);
   readonly menuOpen = signal(false);
   private readonly menuRoot = viewChild<ElementRef<HTMLElement>>('menuRoot');
+  readonly appEnv = environment.appEnv;
 
   private readonly allNav: NavItem[] = [
     { label: 'Bandeja', path: '/home', roles: ['ADMIN', 'ASESOR', 'TECNICO'], icon: 'inbox' },
