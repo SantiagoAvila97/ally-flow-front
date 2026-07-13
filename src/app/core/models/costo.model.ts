@@ -57,8 +57,17 @@ export interface ActualizarItemPayload {
 
 export type TipoPlantillaPdf = 'tabla_operativa' | 'carta_siniestro';
 
+export interface PlantillaPdfExtras {
+  destinatario: string;
+  codigoProveedor: string;
+  notaAdicional: string;
+}
+
 export interface PlantillaPdfCobro {
+  id: string;
   empresaId: string;
+  /** null = plantilla general; string = vista con extras de esa aseguradora */
+  aseguradoraId: string | null;
   razonSocial: string;
   nit: string;
   ciudad: string;
@@ -68,10 +77,12 @@ export interface PlantillaPdfCobro {
   textoHeader: string;
   textoFooter: string;
   tipoPlantilla: TipoPlantillaPdf;
+  extras: PlantillaPdfExtras;
   updatedAt: string;
 }
 
 export interface ActualizarPlantillaPdfPayload {
+  aseguradoraId?: string | null;
   razonSocial?: string;
   nit?: string;
   ciudad?: string;
@@ -81,4 +92,5 @@ export interface ActualizarPlantillaPdfPayload {
   textoHeader?: string;
   textoFooter?: string;
   tipoPlantilla?: TipoPlantillaPdf;
+  extras?: Partial<PlantillaPdfExtras>;
 }

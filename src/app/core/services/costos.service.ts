@@ -59,9 +59,17 @@ export class CostosService {
     return this.http.delete<void>(`${this.base}/items/${id}`);
   }
 
-  getPlantillaPdf(): Observable<PlantillaPdfCobro> {
+  getPlantillaPdf(aseguradoraId?: string | null): Observable<PlantillaPdfCobro> {
+    let params = undefined as Record<string, string> | undefined;
+    if (aseguradoraId) params = { aseguradoraId };
     return this.http
-      .get<ApiList<PlantillaPdfCobro>>(`${this.base}/plantilla-pdf`)
+      .get<ApiList<PlantillaPdfCobro>>(`${this.base}/plantilla-pdf`, { params })
+      .pipe(map((r) => r.data));
+  }
+
+  listPlantillasPdf(): Observable<PlantillaPdfCobro[]> {
+    return this.http
+      .get<ApiList<PlantillaPdfCobro[]>>(`${this.base}/plantillas-pdf`)
       .pipe(map((r) => r.data));
   }
 
@@ -69,5 +77,30 @@ export class CostosService {
     return this.http
       .patch<ApiList<PlantillaPdfCobro>>(`${this.base}/plantilla-pdf`, payload)
       .pipe(map((r) => r.data));
+  }
+
+  deletePlantillaPdf(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.base}/plantilla-pdf/${id}`);
+  }
+
+  /** Descarga PDF de prueba con el borrador actual (no guarda). */
+  descargarPreviewPdf(
+    payload: ActualizarPlantillaPdfPayload,
+    filename = 'factura-cobro-prueba.pdf',
+  ): Observable<void> {
+    return this.http
+      .post(`${this.base}/plantilla-pdf/preview.pdf`, payload, {
+        responseType: 'blob',
+      })
+      .pipe(
+        map((blob) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          a.click();
+          URL.revokeObjectURL(url);
+        }),
+      );
   }
 }

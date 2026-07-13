@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { LucideChevronDown, LucideLogIn } from '@lucide/angular';
 import { AuthService } from '../../core/services/auth.service';
+import { environment } from '../../../environments/environment';
 
 interface DemoUser {
   role: string;
@@ -169,7 +170,8 @@ interface DemoEmpresa {
               </button>
             </form>
 
-            <!-- Collapsible demos -->
+            <!-- Collapsible demos (solo desarrollo) -->
+            @if (showDemos) {
             <div class="mt-8 border-t border-slate-100 pt-5">
               <button
                 type="button"
@@ -228,6 +230,7 @@ interface DemoEmpresa {
                 </div>
               }
             </div>
+            }
           </div>
         </div>
       </main>
@@ -341,6 +344,7 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
+  readonly showDemos = environment.showDemoLogins;
   readonly demosOpen = signal(false);
   readonly demoEmpresa = signal('Full Soluciones');
   readonly liveLabel = signal('Caso #AF-2401');
@@ -373,12 +377,12 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   private liveTimer?: ReturnType<typeof setInterval>;
   private readonly liveFrames = [
-    { label: 'Caso #AF-2401', hint: 'Asignando técnico…' },
-    { label: 'En gestión', hint: 'Evidencias en campo' },
-    { label: 'Documento de cobro', hint: 'Armando PDF oficial' },
-    { label: 'Confirmación asegurado', hint: 'Esperando OK' },
-    { label: 'Recepción de pago', hint: 'Pendiente de cobro' },
-    { label: 'Cobrado', hint: 'Balance actualizado' },
+    { label: 'Caso #AF-2401', hint: 'Por asignar…' },
+    { label: 'En visita', hint: 'Evidencias en campo' },
+    { label: 'Por facturar', hint: 'Armando la factura' },
+    { label: 'Factura enviada', hint: 'Espera OK aseguradora' },
+    { label: 'Factura sin pagar', hint: 'Pendiente de pago' },
+    { label: 'Pagada', hint: 'Balance actualizado' },
   ];
 
   readonly form = this.fb.nonNullable.group({
@@ -417,7 +421,14 @@ export class LoginComponent implements OnInit, OnDestroy {
     const { email, password } = this.form.getRawValue();
     this.auth.login(email, password).subscribe({
       next: () => {
-        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/home';
+        const raw = this.route.snapshot.queryParamMap.get('returnUrl');
+        const returnUrl =
+          raw &&
+          raw.startsWith('/') &&
+          !raw.startsWith('//') &&
+          !raw.includes('://')
+            ? raw
+            : '/home';
         void this.router.navigateByUrl(returnUrl);
       },
       error: (err) => {

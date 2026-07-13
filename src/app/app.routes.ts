@@ -21,12 +21,13 @@ export const routes: Routes = [
           import('./features/home/home.component').then((m) => m.HomeComponent),
       },
       {
-        path: 'costos',
+        path: 'admin',
         canActivate: [authGuard],
         data: { roles: ['ADMIN'] },
         loadComponent: () =>
           import('./features/costos/costos.component').then((m) => m.CostosComponent),
       },
+      { path: 'costos', redirectTo: 'admin', pathMatch: 'full' },
       {
         path: 'balance',
         canActivate: [authGuard],

@@ -1,8 +1,11 @@
 import { DatePipe, DecimalPipe, NgClass } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
+  LucideArrowDown,
   LucideArrowRight,
+  LucideArrowUp,
+  LucideArrowUpDown,
   LucideBanknote,
   LucideChevronRight,
   LucideClock,
@@ -12,9 +15,16 @@ import {
 } from '@lucide/angular';
 import { AuthService } from '../../core/services/auth.service';
 import { BalanceService } from '../../core/services/balance.service';
-import type { BalancePeriodo, BalanceResumen } from '../../core/models/balance.model';
+import type {
+  BalancePeriodo,
+  BalanceResumen,
+} from '../../core/models/balance.model';
 import type { EstadoCaso } from '../../core/models/caso.model';
+import { labelEstadoCaso } from '../../core/labels/estado-caso';
 import { SkeletonComponent } from '../../shared/skeleton.component';
+
+type AsegSortCol = 'nombre' | 'casos' | 'pendienteEnviarCobro' | 'pendientePago' | 'ingresoCobrado';
+type SortDir = 'asc' | 'desc';
 
 @Component({
   selector: 'app-balance',
@@ -30,6 +40,9 @@ import { SkeletonComponent } from '../../shared/skeleton.component';
     LucideInbox,
     LucideLayers,
     LucideArrowRight,
+    LucideArrowUp,
+    LucideArrowDown,
+    LucideArrowUpDown,
     LucideChevronRight,
     SkeletonComponent,
   ],
@@ -39,8 +52,8 @@ import { SkeletonComponent } from '../../shared/skeleton.component';
         <div>
           <h1 class="text-3xl font-semibold text-brand-ink">Balance general</h1>
           <p class="mt-1 max-w-2xl text-brand-soft/80">
-            Dinero y tickets de {{ auth.currentUser?.empresaNombre }}: qué falta enviar a cobro,
-            qué nos deben, y qué ya cobramos.
+            Dinero y tickets de {{ auth.currentUser?.empresaNombre }}: qué falta facturar,
+            qué facturas están sin pagar, y qué ya está pagado.
           </p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
@@ -62,9 +75,9 @@ import { SkeletonComponent } from '../../shared/skeleton.component';
           <svg lucideInbox [size]="14"></svg>
           Bandeja
         </a>
-        <a routerLink="/costos" [queryParams]="fromHere" class="link-chip">
+        <a routerLink="/admin" [queryParams]="fromHere" class="link-chip">
           <svg lucideLayers [size]="14"></svg>
-          Tarifas y PDF
+          Admin
         </a>
       </div>
 
@@ -78,14 +91,14 @@ import { SkeletonComponent } from '../../shared/skeleton.component';
         <div class="mt-8 grid gap-4 lg:grid-cols-3">
           <article class="kpi-card kpi-enviar">
             <div class="flex items-start justify-between gap-2">
-              <p class="kpi-label">Pendiente de enviar a cobro</p>
+              <p class="kpi-label">Por facturar</p>
               <span class="kpi-icon">
                 <svg lucideSend [size]="18"></svg>
               </span>
             </div>
             <p class="kpi-value">{{ d.totales.pendienteEnviarCobro | number: '1.0-0' }}</p>
             <p class="kpi-hint">
-              {{ d.totales.casosPendienteEnviarCobro }} ticket(s) · trabajo listo, falta armar el PDF
+              {{ d.totales.casosPendienteEnviarCobro }} ticket(s) · visita lista, falta armar la factura
             </p>
             <a
               routerLink="/home"
@@ -99,14 +112,14 @@ import { SkeletonComponent } from '../../shared/skeleton.component';
 
           <article class="kpi-card kpi-pendiente">
             <div class="flex items-start justify-between gap-2">
-              <p class="kpi-label">Pendiente de que nos paguen</p>
+              <p class="kpi-label">Facturas sin pagar</p>
               <span class="kpi-icon">
                 <svg lucideClock [size]="18"></svg>
               </span>
             </div>
             <p class="kpi-value">{{ d.totales.pendientePago | number: '1.0-0' }}</p>
             <p class="kpi-hint">
-              {{ d.totales.casosPendientePago }} ticket(s) · documento enviado, esperamos pago
+              {{ d.totales.casosPendientePago }} ticket(s) · espera OK aseguradora o el pago
             </p>
             <a
               routerLink="/home"
@@ -120,13 +133,13 @@ import { SkeletonComponent } from '../../shared/skeleton.component';
 
           <article class="kpi-card kpi-cobrado">
             <div class="flex items-start justify-between gap-2">
-              <p class="kpi-label">Cobrado / finalizado</p>
+              <p class="kpi-label">Pagadas</p>
               <span class="kpi-icon">
                 <svg lucideBanknote [size]="18"></svg>
               </span>
             </div>
             <p class="kpi-value">{{ d.totales.ingresosCobrados | number: '1.0-0' }}</p>
-            <p class="kpi-hint">{{ d.totales.casosCobrados }} ticket(s) ya cobrados</p>
+            <p class="kpi-hint">{{ d.totales.casosCobrados }} ticket(s) ya pagados</p>
             <a
               routerLink="/home"
               [queryParams]="{ estado: 'Cobrado', returnTo: '/balance' }"
@@ -142,7 +155,7 @@ import { SkeletonComponent } from '../../shared/skeleton.component';
           <p class="mt-4 text-sm text-brand-soft">
             Además hay
             <strong class="text-brand-ink">{{ d.totales.casosEnOperacion }}</strong>
-            ticket(s) aún en campo (asignación / gestión), sin documento de cobro.
+            ticket(s) aún en campo (por asignar / en visita), sin factura.
           </p>
         }
 
@@ -151,22 +164,77 @@ import { SkeletonComponent } from '../../shared/skeleton.component';
           <div class="border-b border-slate-100 px-4 py-3">
             <h2 class="font-semibold text-brand-ink">Por aseguradora</h2>
             <p class="mt-0.5 text-sm text-brand-soft/80">
-              Cuánto ya cobraste y cuánto sigue pendiente con cada aseguradora.
+              Cuánto ya cobraste (pagado) y cuánto sigue pendiente con cada aseguradora.
             </p>
           </div>
           <div class="overflow-x-auto">
             <table class="w-full min-w-[560px] text-left text-sm">
               <thead class="bg-surface-muted/50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th class="px-4 py-2.5 font-semibold">Aseguradora</th>
-                  <th class="px-4 py-2.5 font-semibold text-right">Tickets</th>
-                  <th class="px-4 py-2.5 font-semibold text-right">Por enviar</th>
-                  <th class="px-4 py-2.5 font-semibold text-right">Nos deben</th>
-                  <th class="px-4 py-2.5 font-semibold text-right">Cobrado</th>
+                  <th class="px-4 py-2.5 font-semibold">
+                    <button type="button" class="th-sort" [class.th-sort-active]="asegSortCol() === 'nombre'" (click)="toggleAsegSort('nombre')">
+                      Aseguradora
+                      @if (asegSortCol() === 'nombre' && asegSortDir() === 'asc') {
+                        <svg lucideArrowUp [size]="12"></svg>
+                      } @else if (asegSortCol() === 'nombre' && asegSortDir() === 'desc') {
+                        <svg lucideArrowDown [size]="12"></svg>
+                      } @else {
+                        <svg lucideArrowUpDown [size]="12" class="opacity-50"></svg>
+                      }
+                    </button>
+                  </th>
+                  <th class="px-4 py-2.5 font-semibold text-right">
+                    <button type="button" class="th-sort ml-auto" [class.th-sort-active]="asegSortCol() === 'casos'" (click)="toggleAsegSort('casos')">
+                      Tickets
+                      @if (asegSortCol() === 'casos' && asegSortDir() === 'asc') {
+                        <svg lucideArrowUp [size]="12"></svg>
+                      } @else if (asegSortCol() === 'casos' && asegSortDir() === 'desc') {
+                        <svg lucideArrowDown [size]="12"></svg>
+                      } @else {
+                        <svg lucideArrowUpDown [size]="12" class="opacity-50"></svg>
+                      }
+                    </button>
+                  </th>
+                  <th class="px-4 py-2.5 font-semibold text-right">
+                    <button type="button" class="th-sort ml-auto" [class.th-sort-active]="asegSortCol() === 'pendienteEnviarCobro'" (click)="toggleAsegSort('pendienteEnviarCobro')">
+                      Por facturar
+                      @if (asegSortCol() === 'pendienteEnviarCobro' && asegSortDir() === 'asc') {
+                        <svg lucideArrowUp [size]="12"></svg>
+                      } @else if (asegSortCol() === 'pendienteEnviarCobro' && asegSortDir() === 'desc') {
+                        <svg lucideArrowDown [size]="12"></svg>
+                      } @else {
+                        <svg lucideArrowUpDown [size]="12" class="opacity-50"></svg>
+                      }
+                    </button>
+                  </th>
+                  <th class="px-4 py-2.5 font-semibold text-right">
+                    <button type="button" class="th-sort ml-auto" [class.th-sort-active]="asegSortCol() === 'pendientePago'" (click)="toggleAsegSort('pendientePago')">
+                      Sin pagar
+                      @if (asegSortCol() === 'pendientePago' && asegSortDir() === 'asc') {
+                        <svg lucideArrowUp [size]="12"></svg>
+                      } @else if (asegSortCol() === 'pendientePago' && asegSortDir() === 'desc') {
+                        <svg lucideArrowDown [size]="12"></svg>
+                      } @else {
+                        <svg lucideArrowUpDown [size]="12" class="opacity-50"></svg>
+                      }
+                    </button>
+                  </th>
+                  <th class="px-4 py-2.5 font-semibold text-right">
+                    <button type="button" class="th-sort ml-auto" [class.th-sort-active]="asegSortCol() === 'ingresoCobrado'" (click)="toggleAsegSort('ingresoCobrado')">
+                      Pagado
+                      @if (asegSortCol() === 'ingresoCobrado' && asegSortDir() === 'asc') {
+                        <svg lucideArrowUp [size]="12"></svg>
+                      } @else if (asegSortCol() === 'ingresoCobrado' && asegSortDir() === 'desc') {
+                        <svg lucideArrowDown [size]="12"></svg>
+                      } @else {
+                        <svg lucideArrowUpDown [size]="12" class="opacity-50"></svg>
+                      }
+                    </button>
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                @for (row of d.porAseguradora; track row.nombre) {
+                @for (row of porAseguradoraSorted(); track row.nombre) {
                   <tr class="border-t border-slate-100">
                     <td class="px-4 py-2.5 font-medium text-brand-ink">{{ row.nombre }}</td>
                     <td class="px-4 py-2.5 text-right tabular-nums text-brand-soft">{{ row.casos }}</td>
@@ -199,8 +267,8 @@ import { SkeletonComponent } from '../../shared/skeleton.component';
                   <svg lucideSend [size]="15"></svg>
                 </span>
                 <div>
-                  <h2 class="font-semibold text-brand-ink">Por enviar a cobro</h2>
-                  <p class="mt-0.5 text-xs text-brand-soft">Falta armar el PDF</p>
+                  <h2 class="font-semibold text-brand-ink">Por facturar</h2>
+                  <p class="mt-0.5 text-xs text-brand-soft">Falta armar la factura</p>
                 </div>
               </div>
             </div>
@@ -223,7 +291,7 @@ import { SkeletonComponent } from '../../shared/skeleton.component';
                   </a>
                 </li>
               } @empty {
-                <li class="px-4 py-8 text-center text-sm text-slate-500">Nada pendiente de enviar.</li>
+                <li class="px-4 py-8 text-center text-sm text-slate-500">Nada por facturar.</li>
               }
             </ul>
           </section>
@@ -235,8 +303,8 @@ import { SkeletonComponent } from '../../shared/skeleton.component';
                   <svg lucideClock [size]="15"></svg>
                 </span>
                 <div>
-                  <h2 class="font-semibold text-brand-ink">Nos deben</h2>
-                  <p class="mt-0.5 text-xs text-brand-soft">Confirmación o recepción de pago</p>
+                  <h2 class="font-semibold text-brand-ink">Facturas sin pagar</h2>
+                  <p class="mt-0.5 text-xs text-brand-soft">Espera OK aseguradora o el pago</p>
                 </div>
               </div>
             </div>
@@ -260,7 +328,7 @@ import { SkeletonComponent } from '../../shared/skeleton.component';
                   </a>
                 </li>
               } @empty {
-                <li class="px-4 py-8 text-center text-sm text-slate-500">Nadie nos debe en este periodo.</li>
+                <li class="px-4 py-8 text-center text-sm text-slate-500">Ninguna factura sin pagar en este periodo.</li>
               }
             </ul>
           </section>
@@ -272,8 +340,8 @@ import { SkeletonComponent } from '../../shared/skeleton.component';
                   <svg lucideBanknote [size]="15"></svg>
                 </span>
                 <div>
-                  <h2 class="font-semibold text-brand-ink">Cobrados recientes</h2>
-                  <p class="mt-0.5 text-xs text-brand-soft">Ya finalizados</p>
+                  <h2 class="font-semibold text-brand-ink">Pagadas recientes</h2>
+                  <p class="mt-0.5 text-xs text-brand-soft">Ya pagadas</p>
                 </div>
               </div>
             </div>
@@ -298,7 +366,7 @@ import { SkeletonComponent } from '../../shared/skeleton.component';
                   </a>
                 </li>
               } @empty {
-                <li class="px-4 py-8 text-center text-sm text-slate-500">Aún no hay cobros en el periodo.</li>
+                <li class="px-4 py-8 text-center text-sm text-slate-500">Aún no hay facturas pagadas en el periodo.</li>
               }
             </ul>
           </section>
@@ -314,6 +382,26 @@ import { SkeletonComponent } from '../../shared/skeleton.component';
   `,
   styles: [
     `
+      .th-sort {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        font: inherit;
+        font-weight: 600;
+        text-transform: inherit;
+        letter-spacing: inherit;
+        color: inherit;
+        cursor: pointer;
+        border: 0;
+        background: transparent;
+        padding: 0;
+      }
+      .th-sort:hover {
+        color: var(--brand-ink);
+      }
+      .th-sort-active {
+        color: var(--accent);
+      }
       .period-chip {
         border-radius: 9999px;
         border: 1px solid #e2e8f0;
@@ -515,6 +603,23 @@ export class BalanceComponent implements OnInit {
   readonly data = signal<BalanceResumen | null>(null);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
+  readonly asegSortCol = signal<AsegSortCol>('ingresoCobrado');
+  readonly asegSortDir = signal<SortDir>('desc');
+
+  readonly porAseguradoraSorted = computed(() => {
+    const rows = this.data()?.porAseguradora ?? [];
+    const col = this.asegSortCol();
+    const dir = this.asegSortDir() === 'asc' ? 1 : -1;
+    return [...rows].sort((a, b) => {
+      let cmp = 0;
+      if (col === 'nombre') {
+        cmp = a.nombre.localeCompare(b.nombre, 'es');
+      } else {
+        cmp = (a[col] as number) - (b[col] as number);
+      }
+      return cmp * dir;
+    });
+  });
 
   readonly periodos: { id: BalancePeriodo; label: string }[] = [
     { id: '7d', label: '7 días' },
@@ -532,12 +637,17 @@ export class BalanceComponent implements OnInit {
     this.load();
   }
 
+  toggleAsegSort(col: AsegSortCol): void {
+    if (this.asegSortCol() === col) {
+      this.asegSortDir.update((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      this.asegSortCol.set(col);
+      this.asegSortDir.set(col === 'nombre' ? 'asc' : 'desc');
+    }
+  }
+
   labelEstado(e: EstadoCaso): string {
-    const map: Partial<Record<EstadoCaso, string>> = {
-      PendienteConfirmacionAsegurado: 'Espera confirmación',
-      PendienteRecepcionPago: 'Espera pago',
-    };
-    return map[e] ?? e;
+    return labelEstadoCaso(e);
   }
 
   estadoClass(estado: EstadoCaso): string {

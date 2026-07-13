@@ -1,5 +1,5 @@
 /** Rutas internas permitidas para navegación de retorno. */
-const ALLOWED_PREFIXES = ['/home', '/balance', '/costos', '/casos'];
+const ALLOWED_PREFIXES = ['/home', '/balance', '/admin', '/costos', '/casos'];
 
 /**
  * Valida un returnTo (path interno, opcionalmente con query).
@@ -21,7 +21,7 @@ export function safeReturnTo(raw: string | null | undefined): string | null {
 export function returnLabel(returnTo: string): string {
   const path = returnTo.split('?')[0] ?? returnTo;
   if (path.startsWith('/balance')) return 'Volver al Balance';
-  if (path.startsWith('/costos')) return 'Volver a Costos';
+  if (path.startsWith('/admin') || path.startsWith('/costos')) return 'Volver a Admin';
   if (path.startsWith('/home')) return 'Volver a bandeja';
   if (path.startsWith('/casos')) return 'Volver';
   return 'Volver';

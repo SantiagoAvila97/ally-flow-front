@@ -1,8 +1,10 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable, map, shareReplay } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import type { Caso, CompletarCasoPayload, CrearCasoPayload, LineaCobro, TecnicoOption } from '../models/caso.model';
+import type { ListCasosParams, PaginatedResult } from '../models/pagination.model';
+import { PAGE_SIZE_DEFAULT } from '../models/pagination.model';
 
 interface ApiList<T> {
   data: T;
@@ -13,8 +15,32 @@ export class CasosService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/casos`;
 
-  list(): Observable<Caso[]> {
-    return this.http.get<ApiList<Caso[]>>(this.base).pipe(map((r) => r.data));
+  /** Técnicos de la empresa: cache de sesión (cambia poco). */
+  private tecnicos$?: Observable<TecnicoOption[]>;
+
+  list(params: ListCasosParams = {}): Observable<PaginatedResult<Caso>> {
+    let httpParams = new HttpParams()
+      .set('page', String(params.page ?? 1))
+      .set('pageSize', String(params.pageSize ?? PAGE_SIZE_DEFAULT));
+
+    const optional: (keyof ListCasosParams)[] = [
+      'q',
+      'estado',
+      'categoria',
+      'ciudad',
+      'aseguradora',
+      'vista',
+      'sort',
+      'sortDir',
+    ];
+    for (const key of optional) {
+      const val = params[key];
+      if (val !== undefined && val !== null && val !== '') {
+        httpParams = httpParams.set(key, String(val));
+      }
+    }
+
+    return this.http.get<PaginatedResult<Caso>>(this.base, { params: httpParams });
   }
 
   getById(id: string): Observable<Caso> {
@@ -28,9 +54,20 @@ export class CasosService {
   }
 
   getTecnicos(): Observable<TecnicoOption[]> {
-    return this.http
-      .get<ApiList<TecnicoOption[]>>(`${this.base}/meta/tecnicos`)
-      .pipe(map((r) => r.data));
+    if (!this.tecnicos$) {
+      this.tecnicos$ = this.http
+        .get<ApiList<TecnicoOption[]>>(`${this.base}/meta/tecnicos`)
+        .pipe(
+          map((r) => r.data),
+          shareReplay({ bufferSize: 1, refCount: false }),
+        );
+    }
+    return this.tecnicos$;
+  }
+
+  /** Limpiar meta en logout (empresa / usuario distinto). */
+  invalidateMetaCache(): void {
+    this.tecnicos$ = undefined;
   }
 
   create(payload: CrearCasoPayload): Observable<Caso> {

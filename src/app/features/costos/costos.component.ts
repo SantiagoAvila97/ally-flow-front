@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import {
   LucideArrowLeft,
+  LucideFileDown,
   LucideFolderPlus,
   LucidePencil,
   LucidePlus,
@@ -12,7 +13,9 @@ import {
   LucideX,
 } from '@lucide/angular';
 import { AuthService } from '../../core/services/auth.service';
+import { CatalogosService } from '../../core/services/catalogos.service';
 import { CostosService } from '../../core/services/costos.service';
+import type { Aseguradora } from '../../core/models/catalogo.model';
 import type { CategoriaConItems, ItemCosto, PlantillaPdfCobro } from '../../core/models/costo.model';
 import { returnLabel, safeReturnTo } from '../../shared/nav-return';
 import { SkeletonComponent } from '../../shared/skeleton.component';
@@ -27,7 +30,15 @@ type ItemForm = {
   unidad: string;
   activo: boolean;
 };
-type TabId = 'tarifas' | 'pdf';
+type CatalogForm = {
+  nombre: string;
+  nit: string;
+  personaResponsable: string;
+  contactoCobros: string;
+  whatsapp: string;
+  activa: boolean;
+};
+type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
 
 @Component({
   selector: 'app-costos',
@@ -38,6 +49,7 @@ type TabId = 'tarifas' | 'pdf';
     FormsModule,
     RouterLink,
     LucideArrowLeft,
+    LucideFileDown,
     LucideFolderPlus,
     LucidePencil,
     LucidePlus,
@@ -58,9 +70,10 @@ type TabId = 'tarifas' | 'pdf';
       }
       <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 class="text-3xl font-semibold text-brand-ink">Costos por servicio</h1>
+          <h1 class="text-3xl font-semibold text-brand-ink">Admin</h1>
           <p class="mt-1 text-brand-soft/80">
-            Tarifas y documento PDF de {{ auth.currentUser?.empresaNombre }}.
+            Catálogos y tarifas de {{ auth.currentUser?.empresaNombre }}: costos, factura de cobro y
+            aseguradoras.
           </p>
         </div>
         @if (tab() === 'tarifas') {
@@ -69,9 +82,15 @@ type TabId = 'tarifas' | 'pdf';
             Nueva categoría
           </button>
         }
+        @if (tab() === 'aseguradoras') {
+          <button type="button" class="btn-primary" (click)="openAsegCreate()">
+            <svg lucidePlus [size]="16"></svg>
+            Nueva aseguradora
+          </button>
+        }
       </div>
 
-      <div class="mt-6 flex gap-2 border-b border-slate-200">
+      <div class="mt-6 flex flex-wrap gap-2 border-b border-slate-200">
         <button
           type="button"
           class="tab-btn"
@@ -86,7 +105,15 @@ type TabId = 'tarifas' | 'pdf';
           [class.tab-active]="tab() === 'pdf'"
           (click)="openPdfTab()"
         >
-          PDF a generar
+          Factura de cobro
+        </button>
+        <button
+          type="button"
+          class="tab-btn"
+          [class.tab-active]="tab() === 'aseguradoras'"
+          (click)="openAsegTab()"
+        >
+          Aseguradoras
         </button>
       </div>
 
@@ -95,69 +122,374 @@ type TabId = 'tarifas' | 'pdf';
       }
 
       @if (tab() === 'pdf') {
-        <section class="mt-6 max-w-2xl rounded-lg border border-slate-200 bg-white p-6 shadow-soft">
-          <h2 class="text-lg font-semibold text-brand-ink">Plantilla del documento de cobro</h2>
-          <p class="mt-1 text-sm text-brand-soft/80">
-            Define cómo se ve el PDF al enviar el documento oficial. Full usa tabla operativa; Norte carta de siniestro (puedes cambiarlo).
-          </p>
+        <section class="mt-6">
+          <div class="mb-4">
+            <h2 class="text-lg font-semibold text-brand-ink">Factura para cobro</h2>
+            <p class="mt-0.5 text-sm text-brand-soft/80">
+              Una sola cabecera para todas las aseguradoras. Si alguna pide datos extra, configúralos
+              abajo sin cambiar el resto del documento.
+            </p>
+          </div>
 
           @if (plantillaLoading()) {
             <app-skeleton variant="costos-pdf" class="mt-6 block" />
           } @else if (plantillaForm) {
-            <form class="mt-6 space-y-4" (ngSubmit)="savePlantilla()">
-              <div class="grid gap-4 sm:grid-cols-2">
-                <label class="block sm:col-span-2">
-                  <span class="mb-1 block text-sm font-medium">Razón social</span>
-                  <input class="field" [(ngModel)]="plantillaForm.razonSocial" name="razon" required />
-                </label>
-                <label class="block">
-                  <span class="mb-1 block text-sm font-medium">NIT</span>
-                  <input class="field" [(ngModel)]="plantillaForm.nit" name="nit" />
-                </label>
-                <label class="block">
-                  <span class="mb-1 block text-sm font-medium">Ciudad</span>
-                  <input class="field" [(ngModel)]="plantillaForm.ciudad" name="ciudad" />
-                </label>
-                <label class="block">
-                  <span class="mb-1 block text-sm font-medium">Teléfono</span>
-                  <input class="field" [(ngModel)]="plantillaForm.telefono" name="tel" />
-                </label>
-                <label class="block">
-                  <span class="mb-1 block text-sm font-medium">Email</span>
-                  <input class="field" [(ngModel)]="plantillaForm.email" name="email" />
-                </label>
-                <label class="block">
-                  <span class="mb-1 block text-sm font-medium">Color acento</span>
-                  <input class="field" [(ngModel)]="plantillaForm.colorAcento" name="color" placeholder="#0f766e" />
-                </label>
-                <label class="block sm:col-span-2">
-                  <span class="mb-1 block text-sm font-medium">Tipo de plantilla</span>
-                  <select class="field" [(ngModel)]="plantillaForm.tipoPlantilla" name="tipo">
-                    <option value="tabla_operativa">Tabla operativa (Full-style)</option>
-                    <option value="carta_siniestro">Carta de siniestro (Norte-style)</option>
-                  </select>
-                </label>
-                <label class="block sm:col-span-2">
-                  <span class="mb-1 block text-sm font-medium">Texto header</span>
-                  <input class="field" [(ngModel)]="plantillaForm.textoHeader" name="header" />
-                </label>
-                <label class="block sm:col-span-2">
-                  <span class="mb-1 block text-sm font-medium">Texto footer</span>
-                  <textarea class="field min-h-[72px]" [(ngModel)]="plantillaForm.textoFooter" name="footer"></textarea>
-                </label>
-              </div>
-              <div class="flex justify-end">
-                <button type="submit" class="btn-primary" [disabled]="saving()">
-                  @if (saving()) {
-                    <span class="spinner"></span>
-                    Guardando…
+            <div class="grid gap-6 lg:grid-cols-2">
+              <form class="space-y-5" (ngSubmit)="savePlantilla()">
+                <div class="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+                  <h3 class="text-sm font-semibold text-brand-ink">Cabecera (todas)</h3>
+                  <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="block sm:col-span-2">
+                      <span class="mb-1 block text-sm font-medium">Razón social</span>
+                      <input class="field" [(ngModel)]="plantillaForm.razonSocial" name="razon" required />
+                    </label>
+                    <label class="block">
+                      <span class="mb-1 block text-sm font-medium">NIT</span>
+                      <input class="field" [(ngModel)]="plantillaForm.nit" name="nit" />
+                    </label>
+                    <label class="block">
+                      <span class="mb-1 block text-sm font-medium">Ciudad</span>
+                      <input class="field" [(ngModel)]="plantillaForm.ciudad" name="ciudad" />
+                    </label>
+                    <label class="block">
+                      <span class="mb-1 block text-sm font-medium">Teléfono</span>
+                      <input class="field" [(ngModel)]="plantillaForm.telefono" name="tel" />
+                    </label>
+                    <label class="block">
+                      <span class="mb-1 block text-sm font-medium">Email</span>
+                      <input class="field" [(ngModel)]="plantillaForm.email" name="email" />
+                    </label>
+                    <label class="block">
+                      <span class="mb-1 block text-sm font-medium">Color acento</span>
+                      <input
+                        class="field"
+                        [(ngModel)]="plantillaForm.colorAcento"
+                        name="color"
+                        placeholder="#0f766e"
+                      />
+                    </label>
+                    <label class="block sm:col-span-2">
+                      <span class="mb-1 block text-sm font-medium">Tipo de documento</span>
+                      <select class="field" [(ngModel)]="plantillaForm.tipoPlantilla" name="tipo">
+                        <option value="tabla_operativa">Tabla operativa</option>
+                        <option value="carta_siniestro">Carta de siniestro</option>
+                      </select>
+                    </label>
+                    <label class="block sm:col-span-2">
+                      <span class="mb-1 block text-sm font-medium">Título del documento</span>
+                      <input class="field" [(ngModel)]="plantillaForm.textoHeader" name="header" />
+                    </label>
+                    <label class="block sm:col-span-2">
+                      <span class="mb-1 block text-sm font-medium">Texto pie</span>
+                      <textarea
+                        class="field min-h-[72px]"
+                        [(ngModel)]="plantillaForm.textoFooter"
+                        name="footer"
+                      ></textarea>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+                  <div class="flex flex-wrap items-end justify-between gap-3">
+                    <div>
+                      <h3 class="text-sm font-semibold text-brand-ink">Extras por aseguradora</h3>
+                      <p class="mt-0.5 text-xs text-brand-soft/80">
+                        Opcional. Solo se agregan al PDF si esa aseguradora lo requiere.
+                      </p>
+                    </div>
+                    <label class="block min-w-[200px]">
+                      <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Aseguradora
+                      </span>
+                      <select
+                        class="field"
+                        [ngModel]="plantillaScopeId()"
+                        (ngModelChange)="onPlantillaScope($event)"
+                        name="plantillaScope"
+                      >
+                        <option value="">Ninguna (solo cabecera)</option>
+                        @for (a of aseguradorasActivas(); track a.id) {
+                          <option [value]="a.id">{{ a.nombre }}</option>
+                        }
+                      </select>
+                    </label>
+                  </div>
+
+                  @if (plantillaScopeId()) {
+                    <div class="grid gap-4 sm:grid-cols-2">
+                      <label class="block sm:col-span-2">
+                        <span class="mb-1 block text-sm font-medium">Destinatario / área</span>
+                        <input
+                          class="field"
+                          [(ngModel)]="plantillaForm.extras.destinatario"
+                          name="destinatario"
+                          placeholder="Ej. Área de siniestros"
+                        />
+                      </label>
+                      <label class="block sm:col-span-2">
+                        <span class="mb-1 block text-sm font-medium">Código proveedor</span>
+                        <input
+                          class="field"
+                          [(ngModel)]="plantillaForm.extras.codigoProveedor"
+                          name="codigoProv"
+                          placeholder="Si la aseguradora te asignó uno"
+                        />
+                      </label>
+                      <label class="block sm:col-span-2">
+                        <span class="mb-1 block text-sm font-medium">Nota adicional</span>
+                        <textarea
+                          class="field min-h-[72px]"
+                          [(ngModel)]="plantillaForm.extras.notaAdicional"
+                          name="notaExtra"
+                          placeholder="Cláusula, convenio o texto que pidan"
+                        ></textarea>
+                      </label>
+                    </div>
+                    @if (plantillaForm.id) {
+                      <button
+                        type="button"
+                        class="btn-ghost border border-red-200 text-red-700"
+                        [disabled]="saving()"
+                        (click)="deletePlantillaOverride()"
+                      >
+                        Quitar extras de esta aseguradora
+                      </button>
+                    }
                   } @else {
-                    <svg lucideSave [size]="16"></svg>
-                    Guardar plantilla
+                    <p class="text-sm text-slate-500">
+                      Elige una aseguradora para agregar datos opcionales sin cambiar la cabecera.
+                    </p>
                   }
-                </button>
+                </div>
+
+                <div class="flex flex-wrap justify-end gap-2">
+                  <button
+                    type="button"
+                    class="btn-ghost border border-slate-200"
+                    [disabled]="previewingPdf() || !plantillaForm"
+                    (click)="descargarPdfPrueba()"
+                  >
+                    @if (previewingPdf()) {
+                      <span class="spinner"></span>
+                      Generando…
+                    } @else {
+                      <svg lucideFileDown [size]="16"></svg>
+                      PDF de prueba
+                    }
+                  </button>
+                  <button type="submit" class="btn-primary" [disabled]="saving()">
+                    @if (saving()) {
+                      <span class="spinner"></span>
+                      Guardando…
+                    } @else {
+                      <svg lucideSave [size]="16"></svg>
+                      Guardar
+                    }
+                  </button>
+                </div>
+              </form>
+
+              <!-- Vista previa HTML en vivo -->
+              <div class="rounded-lg border border-slate-200 bg-slate-100/80 p-4 shadow-inner">
+                <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Vista previa · Factura para cobro
+                    @if (scopeAseguradoraNombre()) {
+                      <span class="font-normal normal-case text-slate-400">
+                        · con extras de {{ scopeAseguradoraNombre() }}
+                      </span>
+                    }
+                  </p>
+                  <button
+                    type="button"
+                    class="btn-ghost border border-slate-200 !px-2.5 !py-1.5 text-xs"
+                    [disabled]="previewingPdf() || !plantillaForm"
+                    (click)="descargarPdfPrueba()"
+                  >
+                    @if (previewingPdf()) {
+                      <span class="spinner"></span>
+                    } @else {
+                      <svg lucideFileDown [size]="14"></svg>
+                    }
+                    Descargar PDF
+                  </button>
+                </div>
+                <div
+                  class="invoice-preview overflow-hidden rounded-md bg-white shadow-soft"
+                  [style.border-top]="'4px solid ' + (plantillaForm.colorAcento || '#0f766e')"
+                >
+                  <div class="space-y-3 p-5 text-[11px] leading-relaxed text-slate-700 sm:text-xs">
+                    <div>
+                      <p class="text-base font-bold" [style.color]="'#071422'">
+                        {{ plantillaForm.razonSocial || 'Razón social' }}
+                      </p>
+                      <p class="text-slate-500">
+                        NIT {{ plantillaForm.nit || '—' }} · {{ plantillaForm.ciudad || '—' }} ·
+                        {{ plantillaForm.telefono || '—' }}
+                      </p>
+                      <p class="text-slate-500">{{ plantillaForm.email || '—' }}</p>
+                    </div>
+
+                    <p
+                      class="text-sm font-bold"
+                      [style.color]="plantillaForm.colorAcento || '#0f766e'"
+                    >
+                      {{ plantillaForm.textoHeader || 'Factura para cobro' }}
+                    </p>
+
+                    @if (plantillaForm.tipoPlantilla === 'carta_siniestro') {
+                      <p class="text-slate-600">
+                        Estimados señores de
+                        <strong>{{ scopeAseguradoraNombre() || 'la aseguradora' }}</strong>, nos
+                        permitimos presentar la liquidación de honorarios correspondiente al servicio
+                        de campo descrito a continuación.
+                      </p>
+                    }
+
+                    <div class="rounded border border-slate-100 bg-slate-50 px-3 py-2 text-slate-600">
+                      <p><strong>Caso:</strong> Inspección demo — vista previa</p>
+                      <p>
+                        <strong>Nº:</strong> PREV-001
+                        @if (scopeAseguradoraNombre()) {
+                          · {{ scopeAseguradoraNombre() }}
+                        }
+                      </p>
+                      <p><strong>Titular:</strong> Cliente de ejemplo</p>
+                      <p><strong>Dirección:</strong> Calle 100 #19-50, Bogotá</p>
+                    </div>
+
+                    @if (tieneExtrasPreview()) {
+                      <div
+                        class="rounded border px-3 py-2"
+                        [style.borderColor]="plantillaForm.colorAcento || '#0f766e'"
+                        [style.background]="(plantillaForm.colorAcento || '#0f766e') + '12'"
+                      >
+                        <p class="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                          Datos adicionales
+                        </p>
+                        @if (plantillaForm.extras.destinatario) {
+                          <p><strong>Destinatario:</strong> {{ plantillaForm.extras.destinatario }}</p>
+                        }
+                        @if (plantillaForm.extras.codigoProveedor) {
+                          <p>
+                            <strong>Código proveedor:</strong>
+                            {{ plantillaForm.extras.codigoProveedor }}
+                          </p>
+                        }
+                        @if (plantillaForm.extras.notaAdicional) {
+                          <p class="mt-1 text-slate-600">{{ plantillaForm.extras.notaAdicional }}</p>
+                        }
+                      </div>
+                    }
+
+                    @if (plantillaForm.tipoPlantilla === 'tabla_operativa') {
+                      <table class="w-full border-collapse text-left">
+                        <thead>
+                          <tr class="border-b border-slate-200 text-[10px] uppercase text-slate-500">
+                            <th class="py-1.5 pr-2">Ítem</th>
+                            <th class="py-1.5 pr-2 text-right">Cant.</th>
+                            <th class="py-1.5 text-right">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr class="border-b border-slate-50">
+                            <td class="py-1.5 pr-2">Visita técnica</td>
+                            <td class="py-1.5 pr-2 text-right tabular-nums">1</td>
+                            <td class="py-1.5 text-right tabular-nums">$120.000</td>
+                          </tr>
+                          <tr class="border-b border-slate-50">
+                            <td class="py-1.5 pr-2">Destape de desagüe</td>
+                            <td class="py-1.5 pr-2 text-right tabular-nums">1</td>
+                            <td class="py-1.5 text-right tabular-nums">$180.000</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <p class="text-right text-sm font-bold text-brand-ink">Total $300.000</p>
+                    } @else {
+                      <ul class="list-disc space-y-1 pl-4 text-slate-600">
+                        <li>Visita técnica — $120.000</li>
+                        <li>Destape de desagüe — $180.000</li>
+                      </ul>
+                      <p class="font-bold text-brand-ink">Total a cobrar: $300.000 COP</p>
+                    }
+
+                    <p class="border-t border-slate-100 pt-3 text-[10px] text-slate-400">
+                      {{ plantillaForm.textoFooter || 'Pie de documento' }}
+                    </p>
+                  </div>
+                </div>
               </div>
-            </form>
+            </div>
+          }
+        </section>
+      } @else if (tab() === 'aseguradoras') {
+        <section class="mt-6">
+          @if (catalogLoading()) {
+            <app-skeleton variant="costos-tarifas" [rows]="4" />
+          } @else {
+            <div class="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-soft">
+              <table class="w-full min-w-[720px] text-left text-sm">
+                <thead class="bg-surface-muted/50 text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th class="px-4 py-2.5 font-semibold">Nombre</th>
+                    <th class="px-4 py-2.5 font-semibold">NIT</th>
+                    <th class="px-4 py-2.5 font-semibold">Responsable</th>
+                    <th class="px-4 py-2.5 font-semibold">Cobros / dudas</th>
+                    <th class="px-4 py-2.5 font-semibold">WhatsApp</th>
+                    <th class="px-4 py-2.5 font-semibold">Estado</th>
+                    <th class="px-4 py-2.5 font-semibold"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (a of aseguradoras(); track a.id) {
+                    <tr class="border-t border-slate-100">
+                      <td class="px-4 py-2.5 font-medium text-brand-ink">{{ a.nombre }}</td>
+                      <td class="px-4 py-2.5 text-brand-soft tabular-nums">{{ a.nit || '—' }}</td>
+                      <td class="px-4 py-2.5 text-brand-soft">{{ a.personaResponsable || '—' }}</td>
+                      <td class="px-4 py-2.5 text-brand-soft">{{ a.contactoCobros || '—' }}</td>
+                      <td class="px-4 py-2.5 text-brand-soft tabular-nums">
+                        @if (a.whatsapp) {
+                          <a
+                            class="text-accent underline"
+                            [href]="whatsappHref(a.whatsapp)"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {{ a.whatsapp }}
+                          </a>
+                        } @else {
+                          —
+                        }
+                      </td>
+                      <td class="px-4 py-2.5">
+                        <span class="badge" [ngClass]="a.activa ? 'bg-emerald-100 text-emerald-900' : 'bg-slate-200 text-slate-600'">
+                          {{ a.activa ? 'Activa' : 'Inactiva' }}
+                        </span>
+                      </td>
+                      <td class="px-4 py-2.5 text-right">
+                        <button type="button" class="icon-btn" (click)="openAsegEdit(a)" aria-label="Editar">
+                          <svg lucidePencil [size]="15"></svg>
+                        </button>
+                        <button
+                          type="button"
+                          class="icon-btn text-red-600"
+                          [disabled]="deletingId() === a.id"
+                          (click)="deleteAseguradora(a)"
+                          aria-label="Eliminar"
+                        >
+                          <svg lucideTrash2 [size]="15"></svg>
+                        </button>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="7" class="px-4 py-8 text-center text-slate-500">Sin aseguradoras.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
           }
         </section>
       } @else if (loading()) {
@@ -454,6 +786,74 @@ type TabId = 'tarifas' | 'pdf';
           </div>
         </div>
       }
+
+      <!-- Modal catálogo (aseguradora) -->
+      @if (catalogModal()) {
+        <div class="modal-backdrop" (click)="closeCatalogModal()">
+          <div class="modal-panel modal-panel-wide" (click)="$event.stopPropagation()" role="dialog">
+            <h3 class="text-lg font-semibold text-brand-ink">
+              {{ editingCatalogId() ? 'Editar aseguradora' : 'Nueva aseguradora' }}
+            </h3>
+            <form class="mt-4 space-y-4" (ngSubmit)="saveCatalog()">
+              <label class="block">
+                <span class="mb-1 block text-sm font-medium">Nombre</span>
+                <input class="field" [(ngModel)]="catalogForm.nombre" name="catNombre" required />
+              </label>
+              <label class="block">
+                <span class="mb-1 block text-sm font-medium">NIT</span>
+                <input class="field" [(ngModel)]="catalogForm.nit" name="catNit" placeholder="Opcional" />
+              </label>
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Contactos</p>
+              <label class="block">
+                <span class="mb-1 block text-sm font-medium">Persona responsable</span>
+                <input
+                  class="field"
+                  [(ngModel)]="catalogForm.personaResponsable"
+                  name="catResponsable"
+                  placeholder="Nombre del contacto"
+                />
+              </label>
+              <label class="block">
+                <span class="mb-1 block text-sm font-medium">Contacto cobros / dudas</span>
+                <input
+                  class="field"
+                  [(ngModel)]="catalogForm.contactoCobros"
+                  name="catCobros"
+                  placeholder="Email o teléfono para cobros"
+                />
+              </label>
+              <label class="block">
+                <span class="mb-1 block text-sm font-medium">WhatsApp</span>
+                <input
+                  class="field"
+                  [(ngModel)]="catalogForm.whatsapp"
+                  name="catWhatsapp"
+                  placeholder="+57 300 000 0000"
+                />
+              </label>
+              <label class="flex items-center gap-2 text-sm">
+                <input type="checkbox" [(ngModel)]="catalogForm.activa" name="catActiva" />
+                Activa
+              </label>
+              <div class="flex justify-end gap-2 pt-2">
+                <button type="button" class="btn-ghost" (click)="closeCatalogModal()">
+                  <svg lucideX [size]="15"></svg>
+                  Cancelar
+                </button>
+                <button type="submit" class="btn-primary" [disabled]="saving()">
+                  @if (saving()) {
+                    <span class="spinner"></span>
+                    Guardando…
+                  } @else {
+                    <svg lucideSave [size]="16"></svg>
+                    Guardar
+                  }
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      }
     </main>
   `,
   styles: [
@@ -507,6 +907,9 @@ type TabId = 'tarifas' | 'pdf';
         padding: 1.25rem 1.5rem;
         box-shadow: 0 24px 60px -24px rgb(15 42 68 / 0.45);
       }
+      .modal-panel-wide {
+        max-width: 32rem;
+      }
       .tab-btn {
         padding: 0.625rem 1rem;
         font-size: 0.875rem;
@@ -543,6 +946,7 @@ type TabId = 'tarifas' | 'pdf';
 export class CostosComponent implements OnInit {
   readonly auth = inject(AuthService);
   private readonly costos = inject(CostosService);
+  private readonly catalogos = inject(CatalogosService);
   private readonly route = inject(ActivatedRoute);
 
   readonly returnTo = signal<{
@@ -553,17 +957,24 @@ export class CostosComponent implements OnInit {
 
   readonly tab = signal<TabId>('tarifas');
   readonly loading = signal(true);
+  readonly catalogLoading = signal(false);
   readonly plantillaLoading = signal(false);
+  readonly previewingPdf = signal(false);
   readonly saving = signal(false);
   readonly deletingId = signal<string | null>(null);
   readonly error = signal<string | null>(null);
   readonly categorias = signal<CategoriaConItems[]>([]);
+  readonly aseguradoras = signal<Aseguradora[]>([]);
+  /** '' = plantilla general; otherwise aseguradora id */
+  readonly plantillaScopeId = signal('');
   readonly filtroCat = signal<string | null>(null);
 
   readonly catModal = signal(false);
   readonly itemModal = signal(false);
+  readonly catalogModal = signal(false);
   readonly editingCatId = signal<string | null>(null);
   readonly editingItemId = signal<string | null>(null);
+  readonly editingCatalogId = signal<string | null>(null);
 
   plantillaForm: PlantillaPdfCobro | null = null;
 
@@ -577,6 +988,14 @@ export class CostosComponent implements OnInit {
     unidad: 'und',
     activo: true,
   };
+  catalogForm: CatalogForm = {
+    nombre: '',
+    nit: '',
+    personaResponsable: '',
+    contactoCobros: '',
+    whatsapp: '',
+    activa: true,
+  };
 
   readonly categoriasVisibles = computed(() => {
     const id = this.filtroCat();
@@ -587,6 +1006,24 @@ export class CostosComponent implements OnInit {
   readonly totalItems = computed(() =>
     this.categorias().reduce((n, c) => n + c.items.length, 0),
   );
+
+  readonly aseguradorasActivas = computed(() =>
+    this.aseguradoras().filter((a) => a.activa),
+  );
+
+  readonly scopeAseguradoraNombre = computed(() => {
+    const id = this.plantillaScopeId();
+    if (!id) return '';
+    return this.aseguradoras().find((a) => a.id === id)?.nombre ?? '';
+  });
+
+  tieneExtrasPreview(): boolean {
+    const e = this.plantillaForm?.extras;
+    if (!e) return false;
+    return Boolean(
+      e.destinatario?.trim() || e.codigoProveedor?.trim() || e.notaAdicional?.trim(),
+    );
+  }
 
   ngOnInit(): void {
     const back = safeReturnTo(this.route.snapshot.queryParamMap.get('returnTo'));
@@ -609,14 +1046,144 @@ export class CostosComponent implements OnInit {
 
   openPdfTab(): void {
     this.tab.set('pdf');
-    if (!this.plantillaForm) this.loadPlantilla();
+    this.ensureAseguradorasLoaded(() => {
+      this.loadPlantilla(this.plantillaScopeId() || null);
+    });
   }
 
-  loadPlantilla(): void {
+  openAsegTab(): void {
+    this.tab.set('aseguradoras');
+    this.loadAseguradoras();
+  }
+
+  ensureAseguradorasLoaded(done?: () => void): void {
+    if (this.aseguradoras().length) {
+      done?.();
+      return;
+    }
+    this.catalogos.getAseguradoras(true).subscribe({
+      next: (rows) => {
+        this.aseguradoras.set(rows);
+        done?.();
+      },
+      error: (err) => {
+        this.error.set(err?.error?.message ?? 'No se pudieron cargar aseguradoras');
+        done?.();
+      },
+    });
+  }
+
+  loadAseguradoras(): void {
+    this.catalogLoading.set(true);
+    this.catalogos.getAseguradoras(true).subscribe({
+      next: (rows) => {
+        this.aseguradoras.set(rows);
+        this.catalogLoading.set(false);
+      },
+      error: (err) => {
+        this.catalogLoading.set(false);
+        this.error.set(err?.error?.message ?? 'No se pudieron cargar aseguradoras');
+      },
+    });
+  }
+
+  onPlantillaScope(value: string): void {
+    this.plantillaScopeId.set(value ?? '');
+    this.loadPlantilla(value || null);
+  }
+
+  openAsegCreate(): void {
+    this.editingCatalogId.set(null);
+    this.catalogForm = {
+      nombre: '',
+      nit: '',
+      personaResponsable: '',
+      contactoCobros: '',
+      whatsapp: '',
+      activa: true,
+    };
+    this.catalogModal.set(true);
+  }
+
+  openAsegEdit(a: Aseguradora): void {
+    this.editingCatalogId.set(a.id);
+    this.catalogForm = {
+      nombre: a.nombre,
+      nit: a.nit ?? '',
+      personaResponsable: a.personaResponsable ?? '',
+      contactoCobros: a.contactoCobros ?? '',
+      whatsapp: a.whatsapp ?? '',
+      activa: a.activa,
+    };
+    this.catalogModal.set(true);
+  }
+
+  closeCatalogModal(): void {
+    this.catalogModal.set(false);
+  }
+
+  saveCatalog(): void {
+    if (!this.catalogModal() || !this.catalogForm.nombre.trim()) return;
+    this.saving.set(true);
+    this.error.set(null);
+    const id = this.editingCatalogId();
+    const payload = {
+      nombre: this.catalogForm.nombre.trim(),
+      nit: this.catalogForm.nit.trim() || null,
+      personaResponsable: this.catalogForm.personaResponsable.trim() || null,
+      contactoCobros: this.catalogForm.contactoCobros.trim() || null,
+      whatsapp: this.catalogForm.whatsapp.trim() || null,
+      activa: this.catalogForm.activa,
+    };
+    const req = id
+      ? this.catalogos.updateAseguradora(id, payload)
+      : this.catalogos.createAseguradora(payload);
+    req.subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.closeCatalogModal();
+        this.loadAseguradoras();
+      },
+      error: (err) => {
+        this.saving.set(false);
+        this.error.set(err?.error?.message ?? 'No se pudo guardar la aseguradora');
+      },
+    });
+  }
+
+  deleteAseguradora(a: Aseguradora): void {
+    if (!confirm(`¿Eliminar aseguradora "${a.nombre}"?`)) return;
+    this.deletingId.set(a.id);
+    this.catalogos.deleteAseguradora(a.id).subscribe({
+      next: () => {
+        this.deletingId.set(null);
+        this.loadAseguradoras();
+      },
+      error: (err) => {
+        this.deletingId.set(null);
+        this.error.set(err?.error?.message ?? 'No se pudo eliminar');
+      },
+    });
+  }
+
+  /** Abre chat de WhatsApp (solo dígitos, con código país si viene). */
+  whatsappHref(raw: string): string {
+    const digits = raw.replace(/\D/g, '');
+    return digits ? `https://wa.me/${digits}` : '#';
+  }
+
+  loadPlantilla(aseguradoraId?: string | null): void {
     this.plantillaLoading.set(true);
-    this.costos.getPlantillaPdf().subscribe({
+    this.costos.getPlantillaPdf(aseguradoraId ?? null).subscribe({
       next: (p) => {
-        this.plantillaForm = { ...p };
+        this.plantillaForm = {
+          ...p,
+          extras: {
+            destinatario: p.extras?.destinatario ?? '',
+            codigoProveedor: p.extras?.codigoProveedor ?? '',
+            notaAdicional: p.extras?.notaAdicional ?? '',
+          },
+        };
         this.plantillaLoading.set(false);
       },
       error: (err) => {
@@ -630,6 +1197,7 @@ export class CostosComponent implements OnInit {
     if (!this.plantillaForm) return;
     this.saving.set(true);
     this.error.set(null);
+    const scope = this.plantillaScopeId() || null;
     const {
       razonSocial,
       nit,
@@ -640,9 +1208,11 @@ export class CostosComponent implements OnInit {
       textoHeader,
       textoFooter,
       tipoPlantilla,
+      extras,
     } = this.plantillaForm;
     this.costos
       .updatePlantillaPdf({
+        aseguradoraId: scope,
         razonSocial,
         nit,
         ciudad,
@@ -652,15 +1222,85 @@ export class CostosComponent implements OnInit {
         textoHeader,
         textoFooter,
         tipoPlantilla,
+        ...(scope
+          ? {
+              extras: {
+                destinatario: extras.destinatario ?? '',
+                codigoProveedor: extras.codigoProveedor ?? '',
+                notaAdicional: extras.notaAdicional ?? '',
+              },
+            }
+          : {}),
       })
       .subscribe({
         next: (p) => {
-          this.plantillaForm = { ...p };
+          this.plantillaForm = {
+            ...p,
+            extras: {
+              destinatario: p.extras?.destinatario ?? '',
+              codigoProveedor: p.extras?.codigoProveedor ?? '',
+              notaAdicional: p.extras?.notaAdicional ?? '',
+            },
+          };
           this.saving.set(false);
         },
         error: (err) => {
           this.saving.set(false);
           this.error.set(err?.error?.message ?? 'No se pudo guardar la plantilla');
+        },
+      });
+  }
+
+  deletePlantillaOverride(): void {
+    const p = this.plantillaForm;
+    if (!p?.id || !this.plantillaScopeId()) return;
+    if (!confirm('¿Quitar los extras de esta aseguradora? La cabecera no cambia.')) {
+      return;
+    }
+    this.saving.set(true);
+    this.costos.deletePlantillaPdf(p.id).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.loadPlantilla(this.plantillaScopeId() || null);
+      },
+      error: (err) => {
+        this.saving.set(false);
+        this.error.set(err?.error?.message ?? 'No se pudieron quitar los extras');
+      },
+    });
+  }
+
+  descargarPdfPrueba(): void {
+    if (!this.plantillaForm) return;
+    this.previewingPdf.set(true);
+    this.error.set(null);
+    const scope = this.plantillaScopeId() || null;
+    const f = this.plantillaForm;
+    this.costos
+      .descargarPreviewPdf({
+        aseguradoraId: scope,
+        razonSocial: f.razonSocial,
+        nit: f.nit,
+        ciudad: f.ciudad,
+        telefono: f.telefono,
+        email: f.email,
+        colorAcento: f.colorAcento,
+        textoHeader: f.textoHeader,
+        textoFooter: f.textoFooter,
+        tipoPlantilla: f.tipoPlantilla,
+        extras: scope
+          ? {
+              destinatario: f.extras.destinatario ?? '',
+              codigoProveedor: f.extras.codigoProveedor ?? '',
+              notaAdicional: f.extras.notaAdicional ?? '',
+            }
+          : undefined,
+      })
+      .subscribe({
+        next: () => this.previewingPdf.set(false),
+        error: (err) => {
+          this.previewingPdf.set(false);
+          this.error.set(err?.error?.message ?? 'No se pudo generar el PDF de prueba');
         },
       });
   }

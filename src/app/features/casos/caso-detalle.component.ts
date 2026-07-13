@@ -2,7 +2,7 @@ import { DatePipe, DecimalPipe, NgClass } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   LucideArrowLeft,
   LucideArrowRight,
@@ -29,6 +29,7 @@ import { CasosService } from '../../core/services/casos.service';
 import { CostosService } from '../../core/services/costos.service';
 import type { Caso, EstadoCaso, LineaCobro, TecnicoOption, TipoFirmaCierre } from '../../core/models/caso.model';
 import type { CategoriaConItems, ItemCosto } from '../../core/models/costo.model';
+import { labelEstadoCaso } from '../../core/labels/estado-caso';
 import { mapsLinks } from '../../shared/maps.util';
 import { returnLabel, safeReturnTo } from '../../shared/nav-return';
 import { SignaturePadComponent } from '../../shared/signature-pad.component';
@@ -178,7 +179,9 @@ interface ConfirmEstadoPayload {
           <!-- Acciones ASESOR / ADMIN -->
           @if (canAsignar(c)) {
             <section class="mt-8 rounded-lg border border-slate-200 bg-white p-5">
-              <h2 class="text-sm font-semibold text-brand-ink">Asignar técnico</h2>
+              <h2 class="text-sm font-semibold text-brand-ink">
+                {{ c.estado === 'Asignado' || c.tecnicoId ? 'Reasignar técnico' : 'Asignar técnico' }}
+              </h2>
               <div class="mt-3 flex flex-wrap gap-2">
                 <select class="rounded-md border border-slate-300 px-3 py-2 text-sm" [(ngModel)]="tecnicoSelected">
                   <option value="">Selecciona técnico…</option>
@@ -192,7 +195,7 @@ interface ConfirmEstadoPayload {
                   } @else {
                     <svg lucideUserCheck [size]="16"></svg>
                   }
-                  Asignar
+                  {{ c.estado === 'Asignado' || c.tecnicoId ? 'Reasignar' : 'Asignar' }}
                 </button>
               </div>
             </section>
@@ -200,7 +203,7 @@ interface ConfirmEstadoPayload {
 
           @if (canArmarDocumento(c)) {
             <section class="mt-8 rounded-lg border border-orange-200 bg-white p-5">
-              <h2 class="text-sm font-semibold text-brand-ink">Documento de cobro</h2>
+              <h2 class="text-sm font-semibold text-brand-ink">Por facturar</h2>
               @if (c.documentoCobroGeneradoAt) {
                 <p class="mt-1 text-xs text-slate-500">
                   PDF generado: {{ c.documentoCobroGeneradoAt | date: 'dd/MM/yyyy HH:mm' }}
@@ -314,7 +317,7 @@ interface ConfirmEstadoPayload {
                       <p class="mt-1 text-xs text-red-600">{{ catalogoError() }}</p>
                     } @else if (!catalogoOpciones().length) {
                       <p class="mt-1 text-xs text-amber-700">
-                        No hay ítems activos. Créalos en Costos (admin).
+                        No hay ítems activos. Créalos en Admin (tarifas).
                       </p>
                     }
                   }
@@ -363,9 +366,10 @@ interface ConfirmEstadoPayload {
 
           @if (canConfirmarAsegurado(c)) {
             <section class="mt-8 rounded-lg border border-blue-200 bg-white p-5">
-              <h2 class="text-sm font-semibold text-brand-ink">Confirmación del asegurado</h2>
+              <h2 class="text-sm font-semibold text-brand-ink">Factura enviada · espera OK</h2>
               <p class="mt-1 text-sm text-slate-600">
-                El documento fue enviado. Confirma cuando el asegurado lo apruebe.
+                La factura ya se envió. Confirma cuando la aseguradora la apruebe o la
+                devuelva (OK). Luego quedará como factura sin pagar.
               </p>
               <div class="mt-4 flex flex-wrap gap-2">
                 <button
@@ -379,7 +383,7 @@ interface ConfirmEstadoPayload {
                   } @else {
                     <svg lucideBadgeCheck [size]="16"></svg>
                   }
-                  Confirmar asegurado
+                  Marcar OK aseguradora
                 </button>
                 <button
                   type="button"
@@ -400,8 +404,10 @@ interface ConfirmEstadoPayload {
 
           @if (canMarcarCobrado(c)) {
             <section class="mt-8 rounded-lg border border-teal-200 bg-white p-5">
-              <h2 class="text-sm font-semibold text-brand-ink">Recepción de pago</h2>
-              <p class="mt-1 text-sm text-slate-600">Marca el caso como cobrado cuando el pago sea recibido.</p>
+              <h2 class="text-sm font-semibold text-brand-ink">Factura sin pagar</h2>
+              <p class="mt-1 text-sm text-slate-600">
+                Marca como pagada cuando hayas recibido el pago de la aseguradora.
+              </p>
               <div class="mt-4 flex flex-wrap gap-2">
                 <button type="button" class="btn-estado" [disabled]="busy()" (click)="pedirCobrar(c)">
                   @if (busy()) {
@@ -409,7 +415,7 @@ interface ConfirmEstadoPayload {
                   } @else {
                     <svg lucideBanknote [size]="16"></svg>
                   }
-                  Marcar cobrado
+                  Marcar pagada
                 </button>
                 <button
                   type="button"
@@ -441,8 +447,21 @@ interface ConfirmEstadoPayload {
             </section>
           }
 
+          @if (isTecnicoHandoff(c)) {
+            <section class="mt-8 rounded-lg border border-accent/30 bg-accent-soft/40 p-5">
+              <h2 class="text-sm font-semibold text-brand-ink">Caso entregado a cobranza</h2>
+              <p class="mt-2 text-sm text-brand-soft">
+                Ya cerraste la visita. El asesor/admin continúa con la factura o la garantía.
+                Este caso ya no aparece en tu bandeja de campo.
+              </p>
+              <a routerLink="/home" class="btn-primary mt-4 inline-flex">
+                Volver a mi bandeja
+              </a>
+            </section>
+          }
+
           <!-- Acciones TECNICO -->
-          @if (isTecnicoAsignado(c)) {
+          @if (isTecnicoAsignado(c) && (c.estado === 'Asignado' || c.estado === 'EnGestion')) {
             <section class="mt-8 space-y-6 rounded-lg border border-slate-200 bg-white p-5">
               <h2 class="text-sm font-semibold text-brand-ink">Acciones de técnico</h2>
 
@@ -453,7 +472,7 @@ interface ConfirmEstadoPayload {
                   } @else {
                     <svg lucidePlay [size]="16"></svg>
                   }
-                  Iniciar gestión
+                  Iniciar visita
                 </button>
               }
 
@@ -471,21 +490,42 @@ interface ConfirmEstadoPayload {
                       }
                     </ul>
                   }
-                  <div class="mt-3 flex flex-wrap gap-2">
-                    <input
-                      type="url"
-                      class="min-w-[240px] flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
-                      [(ngModel)]="fotoUrl"
-                      placeholder="URL de foto evidencia"
-                    />
-                    <button type="button" class="btn-primary" [disabled]="busy()" (click)="subirFoto(c)">
-                      @if (busy()) {
-                        <span class="spinner"></span>
-                      } @else {
+                  <div class="mt-3 space-y-3">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <label class="btn-primary cursor-pointer">
                         <svg lucideImagePlus [size]="16"></svg>
+                        Subir foto
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          class="sr-only"
+                          [disabled]="busy()"
+                          (change)="onFotoFile($event, c)"
+                        />
+                      </label>
+                      @if (fotoUploading()) {
+                        <span class="inline-flex items-center gap-1.5 text-xs text-slate-500">
+                          <span class="spinner spinner-sm"></span>
+                          Procesando…
+                        </span>
                       }
-                      Subir foto
-                    </button>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                      <input
+                        type="url"
+                        class="min-w-[240px] flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
+                        [(ngModel)]="fotoUrl"
+                        placeholder="O pega una URL de imagen (opcional)"
+                      />
+                      <button type="button" class="btn-ghost border border-slate-200" [disabled]="busy()" (click)="subirFoto(c)">
+                        @if (busy()) {
+                          <span class="spinner"></span>
+                        } @else {
+                          <svg lucideImagePlus [size]="16"></svg>
+                        }
+                        Agregar URL
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -493,7 +533,7 @@ interface ConfirmEstadoPayload {
                   <div class="rounded-md border border-slate-200 bg-white p-4">
                     <h3 class="text-sm font-semibold text-brand-ink">Documentar visita</h3>
                     <p class="mt-1 text-xs text-slate-500">
-                      El caso sigue en gestión. Úsalo si aún no se cierra en esta visita.
+                      El caso sigue en visita. Úsalo si aún no se cierra en esta visita.
                     </p>
                     <textarea
                       class="mt-3 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -767,6 +807,7 @@ export class CasoDetalleComponent implements OnInit {
   private readonly casosService = inject(CasosService);
   private readonly costosService = inject(CostosService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly sanitizer = inject(DomSanitizer);
 
   readonly caso = signal<Caso | null>(null);
@@ -797,11 +838,12 @@ export class CasoDetalleComponent implements OnInit {
   readonly modoCerrar = signal(false);
   readonly confirmOpen = signal<ConfirmEstadoPayload | null>(null);
   readonly lineasSaving = signal(false);
+  readonly fotoUploading = signal(false);
 
   draftLineas: LineaCobro[] = [];
   itemToAddId = '';
   tecnicoSelected = '';
-  fotoUrl = 'https://placehold.co/600x400/111111/ffffff?text=Evidencia';
+  fotoUrl = '';
   notaDocumentacion = '';
   tipoFirma: TipoFirmaCierre = 'TECNICO';
   links = mapsLinks('', '');
@@ -873,7 +915,22 @@ export class CasoDetalleComponent implements OnInit {
   canAsignar(c: Caso): boolean {
     return (
       (this.isAdmin() || this.isAsesor()) &&
-      (c.estado === 'PendienteAsignacion' || c.estado === 'EnGarantia')
+      (c.estado === 'PendienteAsignacion' ||
+        c.estado === 'EnGarantia' ||
+        c.estado === 'Asignado')
+    );
+  }
+
+  /** Técnico ya cerró: cobro/garantía en manos de asesor. */
+  isTecnicoHandoff(c: Caso): boolean {
+    if (!this.isTecnicoAsignado(c)) return false;
+    return (
+      c.estado === 'PendienteDocumentoCobro' ||
+      c.estado === 'PendienteConfirmacionAsegurado' ||
+      c.estado === 'PendienteRecepcionPago' ||
+      c.estado === 'Cobrado' ||
+      c.estado === 'CerradoGarantia' ||
+      c.estado === 'EnGarantia'
     );
   }
 
@@ -901,18 +958,7 @@ export class CasoDetalleComponent implements OnInit {
   }
 
   labelEstado(e: EstadoCaso): string {
-    const map: Record<EstadoCaso, string> = {
-      PendienteAsignacion: 'Pendiente asignación',
-      Asignado: 'Asignado',
-      EnGestion: 'En gestión',
-      PendienteDocumentoCobro: 'Pendiente documento cobro',
-      PendienteConfirmacionAsegurado: 'Pendiente confirmación asegurado',
-      PendienteRecepcionPago: 'Pendiente recepción pago',
-      Cobrado: 'Cobrado',
-      EnGarantia: 'En garantía',
-      CerradoGarantia: 'Cerrado (garantía)',
-    };
-    return map[e] ?? e;
+    return labelEstadoCaso(e);
   }
 
   estadoClass(estado: EstadoCaso): string {
@@ -1059,7 +1105,7 @@ export class CasoDetalleComponent implements OnInit {
         `Caso: ${c.titulo}`,
         `Titular: ${c.titularNombre}`,
         `Dirección: ${c.direccion}, ${c.ciudad}`,
-        'El técnico pasará a gestión en campo.',
+        'El técnico pasará a visita en campo.',
       ],
     });
   }
@@ -1083,7 +1129,7 @@ export class CasoDetalleComponent implements OnInit {
         `Firma: ${firmaLabel}`,
         c.esGarantia
           ? 'Se cerrará la garantía (sin cobro).'
-          : 'Pasará a documento oficial de cobro.',
+          : 'Pasará a por facturar (armar la factura).',
       ],
     });
   }
@@ -1109,7 +1155,8 @@ export class CasoDetalleComponent implements OnInit {
         `Titular: ${c.titularNombre}`,
         ...items,
         `Total: ${total.toLocaleString('es-CO')} COP`,
-        'Se marcará el documento oficial como enviado.',
+        'Se marcará la factura como enviada a la aseguradora.',
+        'El caso quedará esperando el OK / devolución.',
         'Revisa ítems y total antes de continuar.',
       ],
     });
@@ -1120,7 +1167,10 @@ export class CasoDetalleComponent implements OnInit {
       kind: 'confirmar',
       fromLabel: this.labelEstado('PendienteConfirmacionAsegurado'),
       toLabel: this.labelEstado('PendienteRecepcionPago'),
-      lines: this.resumenCobro(c, ['El asegurado confirma el documento de cobro.']),
+      lines: this.resumenCobro(c, [
+        'La aseguradora aprueba / devuelve la factura (OK).',
+        'El caso pasará a factura sin pagar.',
+      ]),
     });
   }
 
@@ -1129,7 +1179,7 @@ export class CasoDetalleComponent implements OnInit {
       kind: 'cobrar',
       fromLabel: this.labelEstado('PendienteRecepcionPago'),
       toLabel: this.labelEstado('Cobrado'),
-      lines: this.resumenCobro(c, ['Se registrará el pago como recibido.']),
+      lines: this.resumenCobro(c, ['Se registrará el pago: la factura quedará pagada.']),
     });
   }
 
@@ -1182,6 +1232,15 @@ export class CasoDetalleComponent implements OnInit {
             this.firmaAtendido.set(null);
             this.modoCerrar.set(false);
             afterClose();
+            const updated = this.caso();
+            const handoff =
+              updated?.estado === 'PendienteDocumentoCobro' ||
+              updated?.estado === 'CerradoGarantia';
+            if (handoff && this.auth.hasRole('TECNICO')) {
+              void this.router.navigate(['/home'], {
+                queryParams: { handoff: '1' },
+              });
+            }
           },
         );
         break;
@@ -1235,10 +1294,47 @@ export class CasoDetalleComponent implements OnInit {
 
   subirFoto(c: Caso): void {
     if (!this.fotoUrl.trim()) {
-      this.actionError.set('Indica una URL de foto');
+      this.actionError.set('Indica una URL de foto o súbela desde el dispositivo');
       return;
     }
-    this.run(() => this.casosService.addFoto(c.id, this.fotoUrl.trim()));
+    this.run(() => this.casosService.addFoto(c.id, this.fotoUrl.trim()), () => {
+      this.fotoUrl = '';
+    });
+  }
+
+  onFotoFile(ev: Event, c: Caso): void {
+    const input = ev.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+
+    const allowed = ['image/png', 'image/jpeg', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      this.actionError.set('Solo PNG, JPEG o WebP');
+      return;
+    }
+    if (file.size > 1_800_000) {
+      this.actionError.set('La foto supera ~1.8MB; usa una más liviana');
+      return;
+    }
+
+    this.fotoUploading.set(true);
+    this.actionError.set(null);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result ?? '');
+      this.fotoUploading.set(false);
+      if (!dataUrl.startsWith('data:image/')) {
+        this.actionError.set('No se pudo leer la imagen');
+        return;
+      }
+      this.run(() => this.casosService.addFoto(c.id, dataUrl));
+    };
+    reader.onerror = () => {
+      this.fotoUploading.set(false);
+      this.actionError.set('Error al leer el archivo');
+    };
+    reader.readAsDataURL(file);
   }
 
   documentar(c: Caso): void {
@@ -1311,6 +1407,7 @@ export class CasoDetalleComponent implements OnInit {
     this.casosService.getById(id).subscribe({
       next: (c) => {
         this.caso.set(c);
+        if (c.tecnicoId) this.tecnicoSelected = c.tecnicoId;
         this.syncDraftLineas(c);
         this.applyMap(c);
         this.loading.set(false);

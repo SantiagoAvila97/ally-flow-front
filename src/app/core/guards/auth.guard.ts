@@ -4,31 +4,18 @@ import { AuthService } from '../services/auth.service';
 import type { Role } from '../models/user.model';
 
 /**
- * ============================================================================
- * authGuard — protección de rutas por JWT y rol
- * ============================================================================
- *
- * Uso en app.routes.ts:
- *   { path: 'home', canActivate: [authGuard], component: HomeComponent }
- *   { path: 'admin', canActivate: [authGuard], data: { roles: ['ADMIN'] }, ... }
- *
- * Flujo:
- *   1. Lee data.roles de la ruta (opcional).
- *   2. Delega en AuthService.isAuthenticated(roles?).
- *   3. Si falla → redirige a /login con returnUrl.
- *
- * Nota: la autorización real siempre se revalida en el backend (role middleware).
- * Este guard solo mejora UX y evita pantallas incorrectas.
+ * Protege rutas por JWT y rol (la API revalida siempre).
  */
-export const authGuard: CanActivateFn = (route) => {
+export const authGuard: CanActivateFn = (route, state) => {
   const auth = inject(AuthService);
   const router = inject(Router);
 
   const allowedRoles = route.data['roles'] as Role[] | undefined;
 
   if (!auth.isAuthenticated()) {
+    const returnUrl = state.url?.startsWith('/') ? state.url : `/${state.url || 'home'}`;
     return router.createUrlTree(['/login'], {
-      queryParams: { returnUrl: route.url.map((s) => s.path).join('/') || 'home' },
+      queryParams: { returnUrl },
     });
   }
 
@@ -39,9 +26,7 @@ export const authGuard: CanActivateFn = (route) => {
   return true;
 };
 
-/**
- * Guard inverso: si ya hay sesión, no mostrar /login.
- */
+/** Si ya hay sesión, no mostrar /login. */
 export const guestGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);

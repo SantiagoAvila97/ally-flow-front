@@ -4,6 +4,8 @@ import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import type { JwtClaims, LoginResponse, Role, User } from '../models/user.model';
+import { CatalogosService } from './catalogos.service';
+import { CasosService } from './casos.service';
 
 const TOKEN_KEY = 'ally_flow_token';
 const USER_KEY = 'ally_flow_user';
@@ -28,6 +30,8 @@ const USER_KEY = 'ally_flow_user';
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly catalogos = inject(CatalogosService);
+  private readonly casos = inject(CasosService);
 
   private readonly userSubject = new BehaviorSubject<User | null>(this.readStoredUser());
   readonly currentUser$ = this.userSubject.asObservable();
@@ -45,6 +49,8 @@ export class AuthService {
       .post<LoginResponse>(`${environment.apiUrl}/auth/login`, { email, password })
       .pipe(
         tap((res) => {
+          // Nueva sesión → no reutilizar catálogos/meta del usuario anterior
+          this.clearMetaCaches();
           localStorage.setItem(TOKEN_KEY, res.token);
           localStorage.setItem(USER_KEY, JSON.stringify(res.user));
           this.userSubject.next(res.user);
@@ -53,14 +59,13 @@ export class AuthService {
   }
 
   logout(): void {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    this.userSubject.next(null);
+    this.clearSession();
     void this.router.navigate(['/login']);
   }
 
   /**
-   * True si hay token, no está expirado y (opcionalmente) el rol está permitido.
+   * True si hay token, no está expirado y (opcionalmente) el rol del JWT está permitido.
+   * El rol se toma del token (no del user en localStorage) para evitar escalada en UI.
    */
   isAuthenticated(allowedRoles?: Role[]): boolean {
     const token = this.token;
@@ -75,16 +80,18 @@ export class AuthService {
     }
 
     if (allowedRoles?.length) {
-      const role = this.currentUser?.role ?? claims.role;
-      return allowedRoles.includes(role);
+      return allowedRoles.includes(claims.role);
     }
 
     return true;
   }
 
   hasRole(...roles: Role[]): boolean {
-    const user = this.currentUser;
-    return !!user && roles.includes(user.role);
+    const token = this.token;
+    if (!token) return false;
+    const claims = this.decodeToken(token);
+    if (!claims) return false;
+    return roles.includes(claims.role);
   }
 
   decodeToken(token: string): JwtClaims | null {
@@ -102,6 +109,12 @@ export class AuthService {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     this.userSubject.next(null);
+    this.clearMetaCaches();
+  }
+
+  private clearMetaCaches(): void {
+    this.catalogos.invalidate();
+    this.casos.invalidateMetaCache();
   }
 
   private readStoredUser(): User | null {
