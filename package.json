@@ -9,9 +9,7 @@
     "build:qa": "ng build --configuration=qa",
     "build:prod": "ng build --configuration=production",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test",
-    "version:bump": "node scripts/bump-version.mjs",
-    "prepare": "node scripts/install-git-hooks.mjs"
+    "test": "ng test"
   },
   "private": true,
   "dependencies": {
