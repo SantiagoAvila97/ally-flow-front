@@ -5,17 +5,7 @@ import { LucideChevronDown, LucideLogIn } from '@lucide/angular';
 import { AuthService } from '../../core/services/auth.service';
 import { environment } from '../../../environments/environment';
 import { formatAppVersion } from '../../core/version';
-
-interface DemoUser {
-  role: string;
-  email: string;
-  password: string;
-}
-
-interface DemoEmpresa {
-  nombre: string;
-  users: DemoUser[];
-}
+import type { LoginDemoEmpresa } from './login-demos.types';
 
 @Component({
   selector: 'app-login',
@@ -197,7 +187,7 @@ interface DemoEmpresa {
                 <div class="mt-4 space-y-4">
                   <!-- Company chips -->
                   <div class="flex flex-wrap gap-2">
-                    @for (emp of demos; track emp.nombre) {
+                    @for (emp of demos(); track emp.nombre) {
                       <button
                         type="button"
                         class="rounded-md border px-3 py-1.5 text-xs font-semibold transition"
@@ -216,20 +206,20 @@ interface DemoEmpresa {
 
                   @if (activeDemo(); as emp) {
                     <ul class="space-y-1">
-                      @for (u of emp.users; track u.email) {
+                      @for (u of emp.users; track u.role) {
                         <li>
                           <button
                             type="button"
                             class="btn-ghost w-full justify-start text-sm"
                             (click)="fillDemo(u.email, u.password)"
                           >
-                            {{ u.role }} — {{ u.email }}
+                            Entrar como {{ u.role }}
                           </button>
                         </li>
                       }
                     </ul>
                     <p class="text-[11px] text-slate-500">
-                      Los datos de cada empresa no se cruzan entre sí.
+                      Solo desarrollo local. Email y clave se rellenan en el formulario (clave oculta).
                     </p>
                   }
                 </div>
@@ -401,6 +391,7 @@ export class LoginComponent implements OnInit, OnDestroy {
   readonly appVersion = formatAppVersion();
   readonly demosOpen = signal(false);
   readonly demoEmpresa = signal('DEMO');
+  readonly demos = signal<LoginDemoEmpresa[]>([]);
   readonly liveLabel = signal('Caso #AF-2401');
   readonly liveHint = signal('Asignando técnico…');
 
@@ -408,25 +399,6 @@ export class LoginComponent implements OnInit, OnDestroy {
     { n: '01', title: 'Lead / llamada', short: 'Lead', hint: 'El asesor captura la ficha' },
     { n: '02', title: 'Campo', short: 'Campo', hint: 'Técnico, evidencia y firma' },
     { n: '03', title: 'Cobro', short: 'Cobro', hint: 'Recaudo, costos y balance' },
-  ];
-
-  readonly demos: DemoEmpresa[] = [
-    {
-      nombre: 'DEMO',
-      users: [
-        { role: 'ADMIN', email: 'admin@demo.local', password: 'admin123' },
-        { role: 'ASESOR', email: 'asesor@demo.local', password: 'asesor123' },
-        { role: 'TECNICO', email: 'tecnico@demo.local', password: 'tecnico123' },
-      ],
-    },
-    {
-      nombre: 'Full Soluciones',
-      users: [
-        { role: 'ADMIN', email: 'admin@fullsoluciones.com', password: 'admin123' },
-        { role: 'ASESOR', email: 'asesor@fullsoluciones.com', password: 'asesor123' },
-        { role: 'TECNICO', email: 'tecnico@fullsoluciones.com', password: 'tecnico123' },
-      ],
-    },
   ];
 
   private liveTimer?: ReturnType<typeof setInterval>;
@@ -444,11 +416,16 @@ export class LoginComponent implements OnInit, OnDestroy {
     password: ['', Validators.required],
   });
 
-  activeDemo(): DemoEmpresa | undefined {
-    return this.demos.find((d) => d.nombre === this.demoEmpresa());
+  activeDemo(): LoginDemoEmpresa | undefined {
+    return this.demos().find((d) => d.nombre === this.demoEmpresa());
   }
 
   ngOnInit(): void {
+    if (this.showDemos) {
+      void import('./login-demos.local').then((m) => {
+        this.demos.set(m.LOGIN_DEMOS);
+      });
+    }
     let i = 0;
     this.liveTimer = setInterval(() => {
       i = (i + 1) % this.liveFrames.length;

@@ -48,7 +48,7 @@ interface NavItem {
     <div class="min-h-screen flex flex-col">
       @if (appEnv === 'local') {
         <div class="border-b border-amber-200/80 bg-amber-50 px-4 py-2 text-center text-xs text-amber-950 sm:text-sm">
-          Datos en memoria: al reiniciar el servidor se pierden casos, tarifas y cambios de demo.
+          API local: al reiniciar el servidor se pierden datos en memoria (si no hay DATABASE_URL).
         </div>
       }
       <header class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur">

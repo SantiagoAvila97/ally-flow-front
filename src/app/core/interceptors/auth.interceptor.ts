@@ -5,21 +5,22 @@ import { AuthService } from '../services/auth.service';
 import { environment } from '../../../environments/environment';
 
 /**
- * Adjunta Bearer token y cierra sesión ante 401 (excepto en login).
+ * Envía cookies (httpOnly session) y cierra sesión ante 401 (excepto login/logout).
  */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
-  const token = auth.token;
 
-  const authedReq = token
-    ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
-    : req;
+  const withCreds = req.clone({ withCredentials: true });
 
-  return next(authedReq).pipe(
+  return next(withCreds).pipe(
     catchError((err: unknown) => {
       if (err instanceof HttpErrorResponse && err.status === 401) {
-        const isLogin = req.url.includes(`${environment.apiUrl}/auth/login`);
-        if (!isLogin && auth.token) {
+        const url = req.url;
+        const isAuthPublic =
+          url.includes(`${environment.apiUrl}/auth/login`) ||
+          url.includes(`${environment.apiUrl}/auth/logout`) ||
+          url.includes(`${environment.apiUrl}/auth/me`);
+        if (!isAuthPublic && auth.currentUser) {
           auth.logout();
         }
       }
