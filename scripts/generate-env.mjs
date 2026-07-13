@@ -45,6 +45,12 @@ if (onVercel && /localhost|127\.0\.0\.1/i.test(apiUrl)) {
   process.exit(1);
 }
 
+if (!onVercel && /localhost|127\.0\.0\.1/i.test(apiUrl) && appEnv !== 'local') {
+  console.warn(
+    `[generate-env] apiUrl es localhost con appEnv=${appEnv}. En Vercel Preview define ALLY_API_URL=${QA_API}`,
+  );
+}
+
 // Demos en QA/Preview; nunca en Production.
 const showDemos = appEnv !== 'prod';
 
