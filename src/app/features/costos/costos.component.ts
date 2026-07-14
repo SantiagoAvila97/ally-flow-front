@@ -321,7 +321,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
               </form>
 
               <!-- Vista previa HTML en vivo -->
-              <div class="rounded-lg border border-slate-200 bg-slate-100/80 p-4 shadow-inner">
+              <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-soft">
                 <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Vista previa · Factura para cobro
@@ -449,7 +449,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
           } @else {
             <div class="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-soft">
               <table class="w-full min-w-[720px] text-left text-sm">
-                <thead class="bg-surface-muted/50 text-xs uppercase tracking-wide text-slate-500">
+                <thead class="bg-white text-xs uppercase tracking-wide text-slate-500 border-b border-slate-100">
                   <tr>
                     <th class="px-4 py-2.5 font-semibold">Nombre</th>
                     <th class="px-4 py-2.5 font-semibold">NIT</th>
@@ -594,7 +594,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
               } @else {
                 <div class="overflow-x-auto">
                   <table class="w-full text-left text-sm">
-                    <thead class="bg-surface-muted/50 text-xs uppercase tracking-wider text-slate-500">
+                    <thead class="bg-white text-xs uppercase tracking-wider text-slate-500 border-b border-slate-100">
                       <tr>
                         <th class="px-4 py-2.5 font-semibold">Ítem</th>
                         <th class="px-4 py-2.5 font-semibold">Unidad</th>

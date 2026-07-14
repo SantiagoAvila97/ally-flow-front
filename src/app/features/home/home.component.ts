@@ -23,6 +23,7 @@ import { ESTADOS_CASO, ESTADOS_OCULTOS_TECNICO } from '../../core/models/caso.mo
 import type { PaginationMeta } from '../../core/models/pagination.model';
 import { PAGE_SIZE_DEFAULT } from '../../core/models/pagination.model';
 import { labelEstadoCaso } from '../../core/labels/estado-caso';
+import { flujoCasoCorto } from '../../core/labels/flujo-caso';
 import { returnLabel, safeReturnTo } from '../../shared/nav-return';
 import { SkeletonComponent } from '../../shared/skeleton.component';
 
@@ -275,7 +276,7 @@ type SortDir = 'asc' | 'desc';
         } @else {
           <div class="mt-8 overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-soft">
             <table class="w-full min-w-[800px] text-left text-sm">
-              <thead class="border-b border-slate-200 bg-surface-muted/60 text-xs uppercase tracking-wider text-slate-500">
+              <thead class="bg-white text-xs uppercase tracking-wide text-slate-500 border-b border-slate-200">
                 <tr>
                   <th class="px-4 py-3 font-semibold">
                     <button type="button" class="th-sort" [class.th-sort-active]="sortCol() === 'titulo'" (click)="toggleSort('titulo')">
@@ -374,6 +375,9 @@ type SortDir = 'asc' | 'desc';
                       <span class="badge" [ngClass]="estadoClass(caso.estado)">{{
                         labelEstado(caso.estado)
                       }}</span>
+                      <p class="mt-1 text-xs tabular-nums text-slate-500">
+                        {{ pasoCorto(caso) }}
+                      </p>
                     </td>
                     @if (!isTecnico()) {
                       <td class="px-4 py-3 text-brand-soft">{{ nombreTecnico(caso.tecnicoId) }}</td>
@@ -612,18 +616,18 @@ export class HomeComponent implements OnInit, OnDestroy {
     },
     {
       estado: 'EnGarantia',
-      titulo: '8. En garantía',
+      titulo: '8. En garantía (reabre)',
       descripcion:
-        'El asesor/admin abre garantía → asigna o reasigna técnico. Luego el técnico trabaja en visita (sin cobro).',
-      actor: 'Asesor / Admin',
+        'Admin abre garantía: el técnico vuelve a visita sin armar cobro nuevo. El cobro ya pagado se conserva.',
+      actor: 'Admin',
       soloComercial: true,
     },
     {
-      estado: 'CerradoGarantia',
-      titulo: '9. Garantía cerrada',
+      estado: 'Cobrado',
+      titulo: '9. Cierra garantía → Pagada',
       descripcion:
-        'Tras evidencia y firma en modo garantía (sin cobro). Queda en historial para asesor/admin; el técnico no lo ve en bandeja.',
-      actor: 'Asesor / Admin',
+        'Al cerrar la visita de garantía el caso vuelve a Pagada (paso 7/7). Balance sigue contando el cobro del cliente.',
+      actor: 'Técnico',
       soloComercial: true,
     },
   ];
@@ -846,6 +850,10 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   labelEstado(e: EstadoCaso): string {
     return labelEstadoCaso(e);
+  }
+
+  pasoCorto(c: { estado: EstadoCaso; esGarantia: boolean }): string {
+    return flujoCasoCorto(c);
   }
 
   estadoClass(estado: EstadoCaso): string {

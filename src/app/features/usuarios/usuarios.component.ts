@@ -51,7 +51,7 @@ type PanelMode = 'closed' | 'create' | 'edit' | 'reset' | 'manage';
       </header>
 
       <!-- Tú -->
-      <section class="mb-8 rounded-lg border border-slate-200 bg-slate-50 px-5 py-4">
+      <section class="mb-8 rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-soft">
         <p class="text-xs font-semibold uppercase tracking-wide text-brand-soft">Tú</p>
         <p class="mt-1 text-xl font-semibold text-brand-ink">{{ meNombre() }}</p>
         <p class="mt-0.5 text-sm text-brand-soft">{{ meRoleLabel() }} · {{ meEmail() }}</p>
@@ -89,9 +89,9 @@ type PanelMode = 'closed' | 'create' | 'edit' | 'reset' | 'manage';
         } @else if (!managedUsers().length) {
           <p class="text-sm text-brand-soft">No hay usuarios para gestionar aquí.</p>
         } @else {
-          <div class="overflow-x-auto border border-slate-200">
-            <table class="w-full min-w-[520px] text-left text-sm">
-              <thead class="bg-slate-50 text-xs uppercase tracking-wide text-brand-soft">
+          <div class="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-soft">
+            <table class="w-full min-w-[520px] text-left text-sm bg-white">
+              <thead class="bg-white text-xs uppercase tracking-wide text-brand-soft border-b border-slate-200">
                 <tr>
                   <th class="px-4 py-3 font-semibold">Nombre</th>
                   <th class="px-4 py-3 font-semibold">Rol</th>
@@ -99,7 +99,7 @@ type PanelMode = 'closed' | 'create' | 'edit' | 'reset' | 'manage';
                   <th class="px-4 py-3 font-semibold"></th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-slate-100">
+              <tbody class="divide-y divide-slate-100 bg-white">
                 @for (u of managedUsers(); track u.id) {
                   <tr>
                     <td class="px-4 py-3">
@@ -348,7 +348,7 @@ type PanelMode = 'closed' | 'create' | 'edit' | 'reset' | 'manage';
         >
           <h2 class="text-lg font-semibold text-brand-ink">Datos para compartir</h2>
           <pre
-            class="mt-4 max-h-64 overflow-auto whitespace-pre-wrap rounded-md border border-slate-200 bg-slate-50 p-3 text-xs"
+            class="mt-4 max-h-64 overflow-auto whitespace-pre-wrap rounded-md border border-slate-200 bg-white p-3 text-xs"
             >{{ share }}</pre
           >
           <div class="mt-4 flex flex-wrap gap-2">

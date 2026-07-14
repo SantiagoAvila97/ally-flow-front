@@ -106,7 +106,7 @@ type SortDir = 'asc' | 'desc';
             </div>
             <div class="overflow-x-auto">
               <table class="w-full min-w-[520px] text-left text-sm">
-                <thead class="bg-surface-muted/50 text-xs uppercase tracking-wide text-slate-500">
+                <thead class="bg-white text-xs uppercase tracking-wide text-slate-500 border-b border-slate-100">
                   <tr>
                     <th class="px-4 py-2.5 font-semibold">Caso</th>
                     <th class="px-4 py-2.5 font-semibold">Cerrado</th>
@@ -301,7 +301,7 @@ type SortDir = 'asc' | 'desc';
               </div>
               <div class="overflow-x-auto">
                 <table class="w-full min-w-[720px] text-left text-sm">
-                  <thead class="bg-surface-muted/50 text-xs uppercase tracking-wide text-slate-500">
+                  <thead class="bg-white text-xs uppercase tracking-wide text-slate-500 border-b border-slate-100">
                     <tr>
                       <th class="px-4 py-2.5 font-semibold">Caso</th>
                       <th class="px-4 py-2.5 font-semibold">T?cnico</th>
@@ -366,7 +366,7 @@ type SortDir = 'asc' | 'desc';
                 </div>
                 <div class="overflow-x-auto">
                   <table class="w-full min-w-[420px] text-left text-sm">
-                    <thead class="bg-surface-muted/50 text-xs uppercase tracking-wide text-slate-500">
+                    <thead class="bg-white text-xs uppercase tracking-wide text-slate-500 border-b border-slate-100">
                       <tr>
                         <th class="px-4 py-2.5 font-semibold">T?cnico</th>
                         <th class="px-4 py-2.5 font-semibold text-right">Casos</th>
@@ -404,7 +404,7 @@ type SortDir = 'asc' | 'desc';
               </div>
               <div class="overflow-x-auto">
                 <table class="w-full min-w-[560px] text-left text-sm">
-                  <thead class="bg-surface-muted/50 text-xs uppercase tracking-wide text-slate-500">
+                  <thead class="bg-white text-xs uppercase tracking-wide text-slate-500 border-b border-slate-100">
                     <tr>
                       <th class="px-4 py-2.5 font-semibold">
                         <button
@@ -858,7 +858,7 @@ type SortDir = 'asc' | 'desc';
       }
       .list-head {
         border-bottom: 1px solid #f1f5f9;
-        background: var(--surface);
+        background: #fff;
         padding: 0.75rem 1rem;
       }
       .list-icon {

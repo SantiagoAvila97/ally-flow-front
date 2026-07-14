@@ -30,6 +30,7 @@ import type { Caso, EstadoCaso, GastoMaterial, LineaCobro, TecnicoOption, TipoFi
 import { ESTADOS_GASTOS_OPERACION } from '../../core/models/caso.model';
 import type { CategoriaConItems, ItemCosto } from '../../core/models/costo.model';
 import { labelEstadoCaso } from '../../core/labels/estado-caso';
+import { flujoCaso, type FlujoCasoVista } from '../../core/labels/flujo-caso';
 import { prepareEvidencePhoto } from '../../core/utils/evidence-photo';
 import { mapsLinks } from '../../shared/maps.util';
 import { returnLabel, safeReturnTo } from '../../shared/nav-return';
@@ -112,6 +113,40 @@ interface ConfirmEstadoPayload {
               <p class="mt-2">
                 <span class="badge" [ngClass]="estadoClass(c.estado)">{{ labelEstado(c.estado) }}</span>
               </p>
+              @if (flujoDe(c); as fl) {
+                <div class="flujo-wrap mt-4">
+                  <div class="flex flex-wrap items-baseline justify-between gap-2">
+                    <p class="text-sm font-semibold text-brand-ink">
+                      {{ fl.etiqueta }}
+                      <span class="font-normal text-brand-soft">· {{ fl.tituloPaso }}</span>
+                    </p>
+                    @if (fl.modo === 'garantia') {
+                      <span class="text-xs font-medium text-amber-800">Flujo garantía</span>
+                    } @else {
+                      <span class="text-xs text-slate-500">Flujo del servicio</span>
+                    }
+                  </div>
+                  <ol class="flujo-steps mt-3" [attr.aria-label]="fl.etiqueta">
+                    @for (s of fl.steps; track s.estado; let i = $index) {
+                      <li
+                        class="flujo-step"
+                        [class.flujo-done]="i + 1 < fl.paso"
+                        [class.flujo-current]="i + 1 === fl.paso"
+                        [class.flujo-todo]="i + 1 > fl.paso"
+                        [title]="s.titulo"
+                      >
+                        <span class="flujo-dot" aria-hidden="true"></span>
+                        <span class="flujo-label">{{ s.titulo }}</span>
+                      </li>
+                    }
+                  </ol>
+                  @if (fl.siguiente) {
+                    <p class="mt-2 text-xs text-slate-500">Siguiente: {{ fl.siguiente }}</p>
+                  } @else {
+                    <p class="mt-2 text-xs text-emerald-700">Flujo completo</p>
+                  }
+                </div>
+              }
             </div>
           </div>
 
@@ -502,7 +537,7 @@ interface ConfirmEstadoPayload {
                   @if (draftMateriales.length) {
                     <ul class="mt-2 space-y-3">
                       @for (m of draftMateriales; track m.id; let i = $index) {
-                        <li class="rounded-md border border-slate-100 bg-slate-50/80 p-3">
+                        <li class="rounded-md border border-slate-100 bg-white p-3">
                           <div class="flex flex-wrap items-end gap-2">
                             <label class="min-w-[160px] flex-1">
                               <span class="sr-only">Descripción</span>
@@ -571,7 +606,7 @@ interface ConfirmEstadoPayload {
                   @if (c.gastosMateriales.length) {
                     <ul class="mt-2 space-y-2">
                       @for (m of c.gastosMateriales; track m.id) {
-                        <li class="flex flex-wrap items-center gap-3 rounded-md border border-slate-100 bg-slate-50/80 p-2">
+                        <li class="flex flex-wrap items-center gap-3 rounded-md border border-slate-100 bg-white p-2">
                           @if (m.fotoUrl) {
                             <a [href]="m.fotoUrl" target="_blank" rel="noopener">
                               <img
@@ -1022,6 +1057,63 @@ interface ConfirmEstadoPayload {
         border-color: var(--action);
         color: var(--action);
       }
+
+      .flujo-wrap {
+        max-width: 40rem;
+        border-radius: 0.75rem;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        padding: 0.85rem 1rem 1rem;
+      }
+      .flujo-steps {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(4.5rem, 1fr));
+        gap: 0.35rem;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .flujo-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.35rem;
+        text-align: center;
+        min-width: 0;
+      }
+      .flujo-dot {
+        width: 0.65rem;
+        height: 0.65rem;
+        border-radius: 9999px;
+        background: #cbd5e1;
+        box-shadow: 0 0 0 3px transparent;
+      }
+      .flujo-label {
+        font-size: 0.65rem;
+        line-height: 1.2;
+        color: #64748b;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+      }
+      .flujo-done .flujo-dot {
+        background: var(--accent);
+      }
+      .flujo-done .flujo-label {
+        color: #0f766e;
+      }
+      .flujo-current .flujo-dot {
+        background: var(--action);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--action) 25%, transparent);
+      }
+      .flujo-current .flujo-label {
+        color: var(--brand-ink);
+        font-weight: 700;
+      }
+      .flujo-todo .flujo-label {
+        color: #94a3b8;
+      }
     `,
   ],
 })
@@ -1220,6 +1312,10 @@ export class CasoDetalleComponent implements OnInit {
 
   labelEstado(e: EstadoCaso): string {
     return labelEstadoCaso(e);
+  }
+
+  flujoDe(c: Caso): FlujoCasoVista {
+    return flujoCaso(c);
   }
 
   estadoClass(estado: EstadoCaso): string {
@@ -1512,7 +1608,7 @@ export class CasoDetalleComponent implements OnInit {
 
   pedirCerrarCaso(c: Caso): void {
     if (!this.puedeCerrar()) return;
-    const next = c.esGarantia ? 'CerradoGarantia' : 'PendienteDocumentoCobro';
+    const next = c.esGarantia ? 'Cobrado' : 'PendienteDocumentoCobro';
     const firmaLabel =
       this.tipoFirma === 'TECNICO'
         ? 'Firma del técnico'
@@ -1528,7 +1624,7 @@ export class CasoDetalleComponent implements OnInit {
         `Fotos de evidencia: ${c.fotos.length}`,
         `Firma: ${firmaLabel}`,
         c.esGarantia
-          ? 'Se cerrará la garantía (sin cobro).'
+          ? 'Se cierra la garantía (sin cobro nuevo) y el caso vuelve a Pagada.'
           : 'Pasará a por facturar (armar la factura).',
       ],
     });
@@ -1649,10 +1745,10 @@ export class CasoDetalleComponent implements OnInit {
             this.modoCerrar.set(false);
             afterClose();
             const updated = this.caso();
-            const handoff =
-              updated?.estado === 'PendienteDocumentoCobro' ||
-              updated?.estado === 'CerradoGarantia';
-            if (handoff && this.auth.hasRole('TECNICO')) {
+            if (
+              this.auth.hasRole('TECNICO') &&
+              (updated?.estado === 'PendienteDocumentoCobro' || updated?.estado === 'Cobrado')
+            ) {
               void this.router.navigate(['/home'], {
                 queryParams: { handoff: '1' },
               });

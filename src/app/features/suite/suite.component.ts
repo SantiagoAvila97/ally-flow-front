@@ -216,7 +216,7 @@ import { readSquareLogoFile } from '../../core/utils/logo-file';
       </section>
 
       @if (selectedEmpresaId(); as eid) {
-        <section class="rounded-lg border border-slate-200 bg-slate-50/80 p-5">
+        <section class="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
           <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 class="text-lg font-semibold text-brand-ink">
@@ -236,8 +236,8 @@ import { readSquareLogoFile } from '../../core/utils/logo-file';
             <p class="text-sm text-brand-soft">Sin usuarios en esta empresa.</p>
           } @else {
             <div class="overflow-x-auto rounded-md border border-slate-200 bg-white">
-              <table class="w-full min-w-[560px] text-left text-sm">
-                <thead class="bg-slate-50 text-xs uppercase tracking-wide text-brand-soft">
+              <table class="w-full min-w-[560px] text-left text-sm bg-white">
+                <thead class="bg-white text-xs uppercase tracking-wide text-brand-soft border-b border-slate-200">
                   <tr>
                     <th class="px-4 py-3 font-semibold">Nombre</th>
                     <th class="px-4 py-3 font-semibold">Email</th>
@@ -283,7 +283,7 @@ import { readSquareLogoFile } from '../../core/utils/logo-file';
           <h2 class="text-lg font-semibold text-brand-ink">Empresa creada — datos para compartir</h2>
           <p class="mt-1 text-sm text-brand-soft">Copia y envía al OWNER (una sola vez).</p>
           <pre
-            class="mt-4 max-h-64 overflow-auto whitespace-pre-wrap rounded-md border border-slate-200 bg-slate-50 p-3 text-xs"
+            class="mt-4 max-h-64 overflow-auto whitespace-pre-wrap rounded-md border border-slate-200 bg-white p-3 text-xs"
             >{{ share }}</pre
           >
           <div class="mt-4 flex flex-wrap gap-2">
