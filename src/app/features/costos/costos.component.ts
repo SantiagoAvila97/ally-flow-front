@@ -19,6 +19,7 @@ import type { Aseguradora } from '../../core/models/catalogo.model';
 import type { CategoriaConItems, ItemCosto, PlantillaPdfCobro } from '../../core/models/costo.model';
 import { returnLabel, safeReturnTo } from '../../shared/nav-return';
 import { CopPipe } from '../../shared/cop.pipe';
+import { MoneyInputComponent } from '../../shared/money-input.component';
 import { SkeletonComponent } from '../../shared/skeleton.component';
 import {
   ConfirmDialogComponent,
@@ -62,6 +63,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
     SkeletonComponent,
     ConfirmDialogComponent,
     CopPipe,
+    MoneyInputComponent,
   ],
   template: `
     <main class="mx-auto max-w-6xl px-6 py-8">
@@ -765,13 +767,11 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
               <div class="grid gap-4 sm:grid-cols-2">
                 <label class="block">
                   <span class="mb-1 block text-sm font-medium">Precio sugerido *</span>
-                  <input
-                    class="field"
-                    type="number"
-                    min="0"
-                    [(ngModel)]="itemForm.precioSugerido"
+                  <app-money-input
                     name="itemPrecio"
-                    required
+                    placeholder="Ej. $ 45.000"
+                    [(ngModel)]="itemForm.precioSugerido"
+                    [required]="true"
                   />
                 </label>
                 <label class="block">

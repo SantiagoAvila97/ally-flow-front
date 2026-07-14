@@ -38,6 +38,7 @@ import { SignaturePadComponent } from '../../shared/signature-pad.component';
 import { SkeletonComponent } from '../../shared/skeleton.component';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { CopPipe, formatCop } from '../../shared/cop.pipe';
+import { MoneyInputComponent } from '../../shared/money-input.component';
 
 type ConfirmKind =
   | 'asignar'
@@ -85,6 +86,7 @@ interface ConfirmEstadoPayload {
     SkeletonComponent,
     ConfirmDialogComponent,
     CopPipe,
+    MoneyInputComponent,
   ],
   template: `
     <div class="pb-16">
@@ -538,13 +540,10 @@ interface ConfirmEstadoPayload {
                   <span class="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500"
                     >Pago al técnico</span
                   >
-                  <input
-                    class="field"
-                    type="number"
-                    min="0"
-                    [(ngModel)]="draftPagoTecnico"
+                  <app-money-input
                     name="pagoTecnico"
-                    placeholder="Ej. 80000"
+                    placeholder="Ej. $ 80.000"
+                    [(ngModel)]="draftPagoTecnico"
                   />
                 </label>
               } @else if (c.pagoTecnico != null) {
@@ -574,14 +573,12 @@ interface ConfirmEstadoPayload {
                                 placeholder="Factura / material"
                               />
                             </label>
-                            <label class="w-28">
+                            <label class="w-32">
                               <span class="sr-only">Monto</span>
-                              <input
-                                class="field"
-                                type="number"
-                                min="0"
-                                [(ngModel)]="m.monto"
+                              <app-money-input
                                 [name]="'matMonto' + i"
+                                placeholder="0"
+                                [(ngModel)]="m.monto"
                               />
                             </label>
                             <button
@@ -666,14 +663,11 @@ interface ConfirmEstadoPayload {
                           placeholder="Descripción"
                         />
                       </label>
-                      <label class="w-28">
-                        <input
-                          class="field"
-                          type="number"
-                          min="0"
-                          [(ngModel)]="nuevoMaterial.monto"
+                      <label class="w-32">
+                        <app-money-input
                           name="nuevoMatMonto"
                           placeholder="Monto"
+                          [(ngModel)]="nuevoMaterial.monto"
                         />
                       </label>
                     </div>
