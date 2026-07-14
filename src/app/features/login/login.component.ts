@@ -213,7 +213,7 @@ import type { LoginDemoEmpresa } from './login-demos.types';
                             class="btn-ghost w-full justify-start text-sm"
                             (click)="fillDemo(u.email, u.password)"
                           >
-                            Entrar como {{ u.role }}
+                            Entrar como {{ demoRoleLabel(u.role) }}
                           </button>
                         </li>
                       }
@@ -418,6 +418,14 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   activeDemo(): LoginDemoEmpresa | undefined {
     return this.demos().find((d) => d.nombre === this.demoEmpresa());
+  }
+
+  demoRoleLabel(role: string): string {
+    if (role === 'OWNER') return 'Owner (Administrador)';
+    if (role === 'ADMIN') return 'Administrador';
+    if (role === 'ASESOR') return 'Asesor';
+    if (role === 'TECNICO') return 'Técnico';
+    return role;
   }
 
   ngOnInit(): void {

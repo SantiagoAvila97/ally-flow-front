@@ -2,34 +2,32 @@ import type { Caso, EstadoCaso } from '../models/caso.model';
 import { labelEstadoCaso } from './estado-caso';
 
 export interface FlujoPasoDef {
-  /** Estado(s) que marcan este paso; el primero se usa solo como clave de UI. */
   estado: EstadoCaso;
   titulo: string;
 }
 
-/** Flujo comercial habitual (servicio → cobro). */
+/** Flujo comercial habitual (servicio → cobro). Títulos = mismos que el badge. */
 export const FLUJO_COMERCIAL: FlujoPasoDef[] = [
   { estado: 'PendienteAsignacion', titulo: 'Por asignar' },
   { estado: 'Asignado', titulo: 'Técnico asignado' },
   { estado: 'EnGestion', titulo: 'En visita' },
   { estado: 'PendienteDocumentoCobro', titulo: 'Por facturar' },
-  { estado: 'PendienteConfirmacionAsegurado', titulo: 'Factura enviada' },
-  { estado: 'PendienteRecepcionPago', titulo: 'Espera pago' },
+  { estado: 'PendienteConfirmacionAsegurado', titulo: 'Factura enviada · espera OK' },
+  { estado: 'PendienteRecepcionPago', titulo: 'Factura sin pagar' },
   { estado: 'Cobrado', titulo: 'Pagada' },
 ];
 
 /**
- * Mini-flujo mientras la garantía está abierta.
- * Al cerrar visita → vuelve a Pagada (flujo comercial, paso 7).
+ * Mini-flujo mientras la garantía está abierta (visita sin cobro nuevo).
+ * Al cerrar → Pagada (flujo comercial, paso 7).
  */
 export const FLUJO_GARANTIA: FlujoPasoDef[] = [
-  { estado: 'EnGarantia', titulo: 'Reabierto' },
+  { estado: 'Asignado', titulo: 'Reabierto' },
   { estado: 'EnGestion', titulo: 'En visita' },
 ];
 
 export interface FlujoCasoVista {
   modo: 'comercial' | 'garantia';
-  /** 1-based */
   paso: number;
   total: number;
   etiqueta: string;
@@ -39,8 +37,7 @@ export interface FlujoCasoVista {
 }
 
 function indexComercial(estado: EstadoCaso): number {
-  if (estado === 'CerradoGarantia') {
-    // Legacy: casos que quedaron “garantía cerrada” = económica Pagada
+  if (estado === 'CerradoGarantia' || estado === 'EnGarantia') {
     return FLUJO_COMERCIAL.length - 1;
   }
   const i = FLUJO_COMERCIAL.findIndex((s) => s.estado === estado);
@@ -49,7 +46,7 @@ function indexComercial(estado: EstadoCaso): number {
 
 function indexGarantia(estado: EstadoCaso): number {
   if (estado === 'EnGestion') return 1;
-  return 0; // EnGarantia, PendienteAsignacion, Asignado
+  return 0;
 }
 
 /** Garantía activa (visita de garantía en curso). */
@@ -57,7 +54,12 @@ export function esGarantiaActiva(caso: Pick<Caso, 'estado' | 'esGarantia'>): boo
   if (caso.estado === 'CerradoGarantia') return false;
   if (caso.estado === 'Cobrado' && !caso.esGarantia) return false;
   if (caso.estado === 'EnGarantia') return true;
-  return !!caso.esGarantia && caso.estado !== 'Cobrado';
+  return (
+    !!caso.esGarantia &&
+    (caso.estado === 'PendienteAsignacion' ||
+      caso.estado === 'Asignado' ||
+      caso.estado === 'EnGestion')
+  );
 }
 
 export function flujoCaso(caso: Pick<Caso, 'estado' | 'esGarantia'>): FlujoCasoVista {
@@ -84,13 +86,14 @@ export function flujoCaso(caso: Pick<Caso, 'estado' | 'esGarantia'>): FlujoCasoV
     total: steps.length,
     etiqueta: `Paso ${idx + 1} de ${steps.length}`,
     tituloPaso:
-      caso.estado === 'CerradoGarantia' ? 'Pagada' : steps[idx]!.titulo,
+      caso.estado === 'CerradoGarantia' || caso.estado === 'EnGarantia'
+        ? 'Pagada'
+        : steps[idx]!.titulo,
     siguiente,
     steps,
   };
 }
 
-/** Texto compacto para listas: "3/7 En visita". */
 export function flujoCasoCorto(caso: Pick<Caso, 'estado' | 'esGarantia'>): string {
   const f = flujoCaso(caso);
   return `${f.paso}/${f.total} ${f.tituloPaso}`;

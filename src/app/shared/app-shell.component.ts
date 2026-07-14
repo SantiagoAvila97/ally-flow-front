@@ -52,7 +52,7 @@ interface NavItem {
     <div class="min-h-screen flex flex-col">
       @if (appEnv === 'local' && memoryMode()) {
         <div class="border-b border-amber-200/80 bg-amber-50 px-4 py-2 text-center text-xs text-amber-950 sm:text-sm">
-          API local sin DATABASE_URL: los cambios viven solo en memoria y se pierden al reiniciar.
+          API local en memoria: los cambios se pierden al reiniciar (sin base de datos).
         </div>
       }
       <header class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur">
@@ -148,8 +148,8 @@ interface NavItem {
               </span>
               <span class="hidden sm:block">
                 <span class="block text-sm font-semibold text-brand-ink">{{ auth.currentUser?.nombre }}</span>
-                <span class="block text-[11px] uppercase tracking-wide text-accent">{{
-                  auth.currentUser?.role
+                <span class="block text-[11px] tracking-wide text-accent">{{
+                  roleLabel()
                 }}</span>
               </span>
               <svg
@@ -285,7 +285,7 @@ export class AppShellComponent implements OnInit {
     { label: 'Bandeja', path: '/home', roles: ['ADMIN', 'ASESOR', 'TECNICO'], icon: 'inbox' },
     { label: 'Suite', path: '/suite', roles: ['SUPER_ADMIN'], icon: 'settings' },
     { label: 'Usuarios', path: '/usuarios', roles: ['ADMIN'], icon: 'users' },
-    { label: 'Admin', path: '/admin', roles: ['ADMIN'], icon: 'settings' },
+    { label: 'Tarifas', path: '/admin', roles: ['ADMIN'], icon: 'settings' },
     { label: 'Balance', path: '/balance', roles: ['ADMIN', 'TECNICO'], icon: 'scale' },
   ];
 
@@ -294,6 +294,18 @@ export class AppShellComponent implements OnInit {
     const role = u?.role;
     if (!role) return [];
     return this.allNav.filter((n) => n.roles.includes(role));
+  });
+
+  /** Rol legible en menú (no códigos crudos). */
+  readonly roleLabel = computed(() => {
+    const u = this.auth.currentUser;
+    if (!u) return '';
+    if (u.role === 'SUPER_ADMIN') return 'Plataforma';
+    if (u.role === 'ADMIN' && u.esOwner) return 'Owner · Administrador';
+    if (u.role === 'ADMIN') return 'Administrador';
+    if (u.role === 'ASESOR') return 'Asesor';
+    if (u.role === 'TECNICO') return 'Técnico';
+    return u.role;
   });
 
   readonly initials = computed(() => {

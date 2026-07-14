@@ -48,7 +48,7 @@ export interface BalanceOpsCasoFila {
   ingreso: number;
   pagoTecnico: number | null;
   materiales: number;
-  utilidad: number;
+  utilidad: number | null;
   updatedAt: string;
 }
 

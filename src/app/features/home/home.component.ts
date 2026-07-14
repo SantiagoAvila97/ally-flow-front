@@ -263,16 +263,25 @@ type SortDir = 'asc' | 'desc';
         } @else if (error()) {
           <p class="mt-12 rounded-md bg-red-50 px-4 py-3 text-red-700">{{ error() }}</p>
         } @else if ((meta()?.total ?? 0) === 0) {
-          <p class="mt-12 text-slate-500">
+          <div class="mt-12 text-slate-500">
             @if (!hasActiveFilters()) {
-              Aún no hay casos en la bandeja.
+              <p>Aún no hay casos en la bandeja.</p>
+              @if (showDemoReseedCta()) {
+                <p class="mt-3 text-sm">
+                  ¿Empresa DEMO vacía?
+                  <a routerLink="/perfil" class="font-semibold text-accent underline">Reiniciar datos DEMO</a>
+                  desde Perfil (Owner).
+                </p>
+              }
             } @else {
-              No hay casos con estos filtros.
-              <button type="button" class="ml-1 font-semibold text-accent underline" (click)="limpiarFiltros()">
-                Limpiar filtros
-              </button>
+              <p>
+                No hay casos con estos filtros.
+                <button type="button" class="ml-1 font-semibold text-accent underline" (click)="limpiarFiltros()">
+                  Limpiar filtros
+                </button>
+              </p>
             }
-          </p>
+          </div>
         } @else {
           <div class="mt-8 overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-soft">
             <table class="w-full min-w-[800px] text-left text-sm">
@@ -511,10 +520,14 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   /** Estados visibles en el filtro según rol (técnico no ve ciclo comercial). */
   readonly estadosFiltro = computed(() => {
+    const legacyGarantia = new Set(['EnGarantia', 'CerradoGarantia']);
     if (this.auth.hasRole('TECNICO')) {
-      return ESTADOS_CASO.filter((e) => !ESTADOS_OCULTOS_TECNICO.includes(e));
+      return ESTADOS_CASO.filter(
+        (e) => !ESTADOS_OCULTOS_TECNICO.includes(e) && !legacyGarantia.has(e),
+      );
     }
-    return [...ESTADOS_CASO];
+    // EnGarantia / CerradoGarantia se aliasan a Pagada en UI; filtra por Cobrado.
+    return ESTADOS_CASO.filter((e) => !legacyGarantia.has(e));
   });
   readonly user = signal(this.auth.currentUser);
   readonly casos = signal<Caso[]>([]);
@@ -595,31 +608,31 @@ export class HomeComponent implements OnInit, OnDestroy {
       titulo: '5. Factura enviada · espera OK',
       descripcion:
         'La factura ya se envió. Falta que el cliente la apruebe o la devuelva (OK) para poder registrar el pago.',
-      actor: 'Asesor / Admin',
+      actor: 'Administrador',
       soloComercial: true,
     },
     {
       estado: 'PendienteRecepcionPago',
       titulo: '6. Factura sin pagar',
       descripcion:
-        'El cliente ya dio OK. La factura está aprobada y falta que nos paguen (registrar el pago).',
-      actor: 'Asesor / Admin',
+        'El cliente ya dio OK. La factura está aprobada y falta registrar el pago del cliente.',
+      actor: 'Administrador',
       soloComercial: true,
     },
     {
       estado: 'Cobrado',
       titulo: '7. Pagada',
       descripcion:
-        'Se registró el pago. La factura quedó pagada y el ciclo comercial del servicio cierra.',
-      actor: 'Asesor / Admin',
+        'Se registró el pago del cliente. La factura quedó pagada y el ciclo comercial cierra. El pago al técnico es un costo aparte (solo el administrador lo liquida).',
+      actor: 'Administrador',
       soloComercial: true,
     },
     {
-      estado: 'EnGarantia',
-      titulo: '8. En garantía (reabre)',
+      estado: 'Asignado',
+      titulo: '8. Garantía (reabre visita)',
       descripcion:
-        'Admin abre garantía: el técnico vuelve a visita sin armar cobro nuevo. El cobro ya pagado se conserva.',
-      actor: 'Admin',
+        'El administrador abre garantía: el caso vuelve a Asignado (o Por asignar). El técnico entra a visita sin cobro nuevo; el cobro ya pagado se conserva.',
+      actor: 'Administrador',
       soloComercial: true,
     },
     {
@@ -637,7 +650,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     const empresa = this.user()?.empresaNombre ?? 'tu empresa';
     switch (role) {
       case 'ADMIN':
-        return `Vista de ${empresa}: asigna técnicos, cobranza, costos y garantías.`;
+        return `Vista de ${empresa}: asigna técnicos, liquidación, OK/pagada y garantías (Administrador).`;
       case 'ASESOR':
         return `Crea casos desde la llamada y da seguimiento en ${empresa}.`;
       case 'TECNICO':
@@ -799,6 +812,13 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.filtroComercial() ||
       this.filtroNosDeben()
     );
+  }
+
+  /** CTA a Perfil → Reiniciar datos DEMO (Owner de empresa DEMO). */
+  showDemoReseedCta(): boolean {
+    const u = this.auth.currentUser;
+    if (!u || u.role !== 'ADMIN' || !u.esOwner) return false;
+    return (u.empresaNombre ?? '').toUpperCase() === 'DEMO';
   }
 
   /** Al abrir un caso, volver a esta bandeja (con filtros) y, si aplica, al origen. */

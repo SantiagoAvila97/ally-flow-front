@@ -9,8 +9,8 @@ export const LABEL_ESTADO_CASO: Record<EstadoCaso, string> = {
   PendienteConfirmacionAsegurado: 'Factura enviada · espera OK',
   PendienteRecepcionPago: 'Factura sin pagar',
   Cobrado: 'Pagada',
-  EnGarantia: 'En garantía',
-  CerradoGarantia: 'Pagada (garantía)',
+  EnGarantia: 'Pagada',
+  CerradoGarantia: 'Pagada',
 };
 
 export function labelEstadoCaso(e: EstadoCaso): string {

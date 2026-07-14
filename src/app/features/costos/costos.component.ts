@@ -191,7 +191,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                         />
                       </div>
                       <p class="mt-1 text-[11px] text-slate-500">
-                        Mismo formato de factura (estilo Full Soluciones). Solo cambia el color.
+                        Mismo formato de factura. Solo cambia el color.
                       </p>
                     </label>
                     <label class="block sm:col-span-2">
@@ -503,7 +503,17 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                     </tr>
                   } @empty {
                     <tr>
-                      <td colspan="7" class="px-4 py-8 text-center text-slate-500">Sin clientes.</td>
+                      <td colspan="7" class="px-4 py-8 text-center text-slate-500">
+                        Sin clientes.
+                        @if (showDemoReseedCta()) {
+                          <span class="mt-2 block text-sm">
+                            <a routerLink="/perfil" class="font-semibold text-accent underline"
+                              >Reiniciar datos DEMO</a
+                            >
+                            desde Perfil (Owner).
+                          </span>
+                        }
+                      </td>
                     </tr>
                   }
                 </tbody>
@@ -1098,6 +1108,13 @@ export class CostosComponent implements OnInit {
   plantillaTieneCambiosSinGuardar(): boolean {
     if (!this.plantillaForm || !this.plantillaSavedSnapshot) return false;
     return this.plantillaSnapshotPayload(this.plantillaForm) !== this.plantillaSavedSnapshot;
+  }
+
+  /** CTA Perfil → Reiniciar datos DEMO (Owner DEMO). */
+  showDemoReseedCta(): boolean {
+    const u = this.auth.currentUser;
+    if (!u || u.role !== 'ADMIN' || !u.esOwner) return false;
+    return (u.empresaNombre ?? '').toUpperCase() === 'DEMO';
   }
 
   ngOnInit(): void {

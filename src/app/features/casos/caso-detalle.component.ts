@@ -113,42 +113,38 @@ interface ConfirmEstadoPayload {
               <p class="mt-2">
                 <span class="badge" [ngClass]="estadoClass(c.estado)">{{ labelEstado(c.estado) }}</span>
               </p>
-              @if (flujoDe(c); as fl) {
-                <div class="flujo-wrap mt-4">
-                  <div class="flex flex-wrap items-baseline justify-between gap-2">
-                    <p class="text-sm font-semibold text-brand-ink">
-                      {{ fl.etiqueta }}
-                      <span class="font-normal text-brand-soft">· {{ fl.tituloPaso }}</span>
-                    </p>
-                    @if (fl.modo === 'garantia') {
-                      <span class="text-xs font-medium text-amber-800">Flujo garantía</span>
-                    } @else {
-                      <span class="text-xs text-slate-500">Flujo del servicio</span>
-                    }
-                  </div>
-                  <ol class="flujo-steps mt-3" [attr.aria-label]="fl.etiqueta">
-                    @for (s of fl.steps; track s.estado; let i = $index) {
-                      <li
-                        class="flujo-step"
-                        [class.flujo-done]="i + 1 < fl.paso"
-                        [class.flujo-current]="i + 1 === fl.paso"
-                        [class.flujo-todo]="i + 1 > fl.paso"
-                        [title]="s.titulo"
-                      >
-                        <span class="flujo-dot" aria-hidden="true"></span>
-                        <span class="flujo-label">{{ s.titulo }}</span>
-                      </li>
-                    }
-                  </ol>
-                  @if (fl.siguiente) {
-                    <p class="mt-2 text-xs text-slate-500">Siguiente: {{ fl.siguiente }}</p>
-                  } @else {
-                    <p class="mt-2 text-xs text-emerald-700">Flujo completo</p>
-                  }
-                </div>
-              }
             </div>
           </div>
+
+          @if (flujoDe(c); as fl) {
+            <div class="flujo-wrap mt-5">
+              <p class="text-sm font-semibold text-brand-ink">
+                {{ fl.etiqueta }}
+                <span class="font-normal text-brand-soft">· {{ fl.tituloPaso }}</span>
+              </p>
+              <ol class="flujo-steps mt-4" [attr.aria-label]="fl.etiqueta">
+                @for (s of fl.steps; track s.estado; let i = $index) {
+                  <li
+                    class="flujo-step"
+                    [class.flujo-done]="i + 1 < fl.paso"
+                    [class.flujo-current]="i + 1 === fl.paso"
+                    [class.flujo-todo]="i + 1 > fl.paso"
+                    [title]="s.titulo"
+                  >
+                    <span class="flujo-rail" aria-hidden="true"></span>
+                    <span class="flujo-dot" aria-hidden="true">
+                      @if (i + 1 < fl.paso) {
+                        <span class="flujo-check">✓</span>
+                      } @else {
+                        {{ i + 1 }}
+                      }
+                    </span>
+                    <span class="flujo-label">{{ s.titulo }}</span>
+                  </li>
+                }
+              </ol>
+            </div>
+          }
 
           @if (actionError()) {
             <p class="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{{ actionError() }}</p>
@@ -404,11 +400,31 @@ interface ConfirmEstadoPayload {
                 </button>
               </div>
               @if (!tieneGastosOperacion(c)) {
-                <p class="mt-3 text-sm text-amber-800">
-                  Antes de enviar la factura, registra el
-                  <strong>pago al técnico</strong> (y materiales si aplica) en Gastos de
-                  operación.
-                </p>
+                <div
+                  class="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-3 text-sm text-amber-950"
+                  role="status"
+                >
+                  @if (canEditGastosOperacion(c)) {
+                    <p class="font-semibold">Falta liquidación del técnico</p>
+                    <p class="mt-1">
+                      Guarda el <strong>pago al técnico</strong> en Gastos de operación (abajo)
+                      antes de enviar la factura.
+                    </p>
+                    <button
+                      type="button"
+                      class="mt-2 text-sm font-semibold text-accent underline"
+                      (click)="scrollToGastosOps()"
+                    >
+                      Ir a pago al técnico
+                    </button>
+                  } @else {
+                    <p class="font-semibold">Falta liquidación del técnico</p>
+                    <p class="mt-1">
+                      Solo el <strong>administrador</strong> puede guardarla. Pídele que registre el
+                      pago al técnico en este caso; sin eso no puedes enviar la factura.
+                    </p>
+                  }
+                </div>
               }
             </section>
           }
@@ -455,7 +471,7 @@ interface ConfirmEstadoPayload {
             <section class="mt-8 rounded-lg border border-teal-200 bg-white p-5">
               <h2 class="text-sm font-semibold text-brand-ink">Factura sin pagar</h2>
               <p class="mt-1 text-sm text-slate-600">
-                Marca como pagada cuando hayas recibido el pago de el cliente.
+                Marca como pagada cuando hayas recibido el pago del cliente.
               </p>
               <div class="mt-4 flex flex-wrap gap-2">
                 <button
@@ -469,7 +485,7 @@ interface ConfirmEstadoPayload {
                   } @else {
                     <svg lucideBanknote [size]="16"></svg>
                   }
-                  Marcar pagada
+                  Marcar pagada (cliente)
                 </button>
                 <button
                   type="button"
@@ -486,17 +502,27 @@ interface ConfirmEstadoPayload {
                 </button>
               </div>
               @if (!tieneGastosOperacion(c)) {
-                <p class="mt-3 text-sm text-amber-800">
-                  Falta el <strong>pago al técnico</strong> en Gastos de operación para marcar
-                  pagada.
-                </p>
+                <div
+                  class="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-3 text-sm text-amber-950"
+                  role="status"
+                >
+                  <p class="font-semibold">Falta liquidación del técnico</p>
+                  <p class="mt-1">
+                    @if (canEditGastosOperacion(c)) {
+                      Guarda el pago al técnico en Gastos de operación para marcar pagada.
+                    } @else {
+                      Solo el administrador puede guardarla. Pídele que liquide el técnico en este
+                      caso.
+                    }
+                  </p>
+                </div>
               }
             </section>
           }
 
           @if (canVerGastosOperacion(c)) {
-            <section class="mt-8 rounded-lg border border-slate-200 bg-white p-5">
-              <h2 class="text-sm font-semibold text-brand-ink">Gastos de operación</h2>
+            <section id="gastos-operacion" class="mt-8 rounded-lg border border-slate-200 bg-white p-5">
+              <h2 class="text-sm font-semibold text-brand-ink">Pago al técnico y materiales</h2>
               <p class="mt-1 text-sm text-slate-600">
                 @if (canEditGastosOperacion(c)) {
                   Auditoría: solo admin edita pago al técnico y puede modificar o borrar
@@ -973,7 +999,7 @@ interface ConfirmEstadoPayload {
           <section class="mt-10">
             <h2 class="text-xl font-semibold text-brand-ink">Línea de tiempo</h2>
             <ol class="mt-4 space-y-0 border-l-2 border-slate-200 pl-6">
-              @for (h of c.historialCambios; track h.fecha + h.estado + h.usuarioId; let i = $index) {
+              @for (h of c.historialCambios; track h.fecha + h.estado + h.usuarioId) {
                 <li class="relative pb-6">
                   <span
                     class="absolute -left-[1.6rem] top-1 h-3 w-3 rounded-full border-2 border-white bg-accent shadow"
@@ -1059,39 +1085,90 @@ interface ConfirmEstadoPayload {
       }
 
       .flujo-wrap {
-        max-width: 40rem;
+        width: 100%;
         border-radius: 0.75rem;
         border: 1px solid #e2e8f0;
         background: #fff;
-        padding: 0.85rem 1rem 1rem;
+        padding: 1rem 1.1rem 1.15rem;
       }
       .flujo-steps {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(4.5rem, 1fr));
-        gap: 0.35rem;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: flex-start;
+        width: 100%;
         list-style: none;
         margin: 0;
         padding: 0;
+        gap: 0;
       }
       .flujo-step {
+        position: relative;
         display: flex;
+        flex: 1 1 0;
         flex-direction: column;
         align-items: center;
-        gap: 0.35rem;
+        gap: 0.45rem;
         text-align: center;
         min-width: 0;
+        padding: 0 0.15rem;
+      }
+      .flujo-rail {
+        position: absolute;
+        top: 0.7rem;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: #e2e8f0;
+        z-index: 0;
+      }
+      .flujo-step:first-child .flujo-rail {
+        left: 50%;
+      }
+      .flujo-step:last-child .flujo-rail {
+        right: 50%;
+      }
+      .flujo-done .flujo-rail,
+      .flujo-current .flujo-rail {
+        background: color-mix(in srgb, var(--accent) 55%, #e2e8f0);
+      }
+      .flujo-step:last-child.flujo-todo .flujo-rail,
+      .flujo-step.flujo-todo .flujo-rail {
+        background: #e2e8f0;
+      }
+      .flujo-done + .flujo-todo .flujo-rail,
+      .flujo-current + .flujo-todo .flujo-rail {
+        background: linear-gradient(
+          90deg,
+          color-mix(in srgb, var(--accent) 55%, #e2e8f0) 0%,
+          #e2e8f0 55%
+        );
       }
       .flujo-dot {
-        width: 0.65rem;
-        height: 0.65rem;
+        position: relative;
+        z-index: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.4rem;
+        height: 1.4rem;
         border-radius: 9999px;
         background: #cbd5e1;
-        box-shadow: 0 0 0 3px transparent;
+        color: #fff;
+        font-size: 0.65rem;
+        font-weight: 700;
+        line-height: 1;
+        box-shadow: 0 0 0 3px #fff;
+      }
+      .flujo-check {
+        font-size: 0.7rem;
+        line-height: 1;
       }
       .flujo-label {
         font-size: 0.65rem;
-        line-height: 1.2;
+        line-height: 1.25;
         color: #64748b;
+        width: 100%;
         overflow: hidden;
         display: -webkit-box;
         -webkit-line-clamp: 2;
@@ -1105,7 +1182,7 @@ interface ConfirmEstadoPayload {
       }
       .flujo-current .flujo-dot {
         background: var(--action);
-        box-shadow: 0 0 0 3px color-mix(in srgb, var(--action) 25%, transparent);
+        box-shadow: 0 0 0 3px #fff, 0 0 0 6px color-mix(in srgb, var(--action) 25%, transparent);
       }
       .flujo-current .flujo-label {
         color: var(--brand-ink);
@@ -1301,6 +1378,10 @@ export class CasoDetalleComponent implements OnInit {
   /** Pago al técnico definido (materiales pueden ir vacíos = $0). */
   tieneGastosOperacion(c: Caso): boolean {
     return c.pagoTecnico != null && Number.isFinite(c.pagoTecnico) && c.pagoTecnico >= 0;
+  }
+
+  scrollToGastosOps(): void {
+    document.getElementById('gastos-operacion')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   canGarantia(c: Caso): boolean {
@@ -1658,7 +1739,7 @@ export class CasoDetalleComponent implements OnInit {
         ...items,
         `Total: ${formatCop(total)}`,
         `Pago técnico: ${formatCop(c.pagoTecnico)}`,
-        'Se marcará la factura como enviada a el cliente.',
+        'Se marcará la factura como enviada al cliente.',
         'El caso quedará esperando el OK / devolución.',
         'Revisa ítems y total antes de continuar.',
       ],
@@ -1690,7 +1771,7 @@ export class CasoDetalleComponent implements OnInit {
       toLabel: this.labelEstado('Cobrado'),
       lines: this.resumenCobro(c, [
         `Pago técnico: ${formatCop(c.pagoTecnico)}`,
-        'Se registrará el pago: la factura quedará pagada (aseguradora).',
+        'Se registrará el pago: la factura quedará pagada (cliente).',
       ]),
     });
   }
@@ -1704,10 +1785,11 @@ export class CasoDetalleComponent implements OnInit {
       lines: [
         `Caso: ${c.titulo}`,
         `Nº: ${c.numeroAseguradora}`,
-        'Se reabre por garantía (sin cobro).',
+        'Se reabre por garantía (sin cobro nuevo; se conserva lo ya facturado).',
         c.tecnicoId
-          ? 'Quedará asignado al técnico actual para iniciar.'
-          : 'Quedará pendiente de asignar técnico.',
+          ? 'Quedará asignado al técnico actual para que inicie la visita.'
+          : 'Quedará por asignar: elige un técnico y luego inicia la visita.',
+        'Al cerrar la visita de garantía el caso vuelve a Pagada.',
       ],
     });
   }
