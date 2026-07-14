@@ -52,50 +52,52 @@ type SortDir = 'asc' | 'desc';
   template: `
     <main class="mx-auto max-w-6xl px-6 py-8">
       @if (isTecnico()) {
-        <div class="flex flex-wrap items-end justify-between gap-4">
-          <div>
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+          <div class="min-w-0">
             <h1 class="text-3xl font-semibold text-brand-ink">Mis pagos</h1>
-            <p class="mt-1 max-w-2xl text-brand-soft/80">
-              Casos que cerraste en el periodo ? el monto a pagar no depende del cobro del cliente.
+            <p class="mt-1 max-w-xl text-brand-soft/80">
+              Casos que cerraste en el periodo - el monto a pagar no depende del cobro del cliente.
             </p>
           </div>
-          <div class="flex flex-wrap items-center gap-2">
-            @for (p of periodosTech; track p.id) {
-              <button
-                type="button"
-                class="period-chip"
-                [class.period-active]="periodo() === p.id && !usaRangoCustom()"
-                (click)="cambiarPeriodo(p.id)"
-              >
-                {{ p.label }}
-              </button>
-            }
+          <div class="flex flex-col items-stretch gap-3 justify-self-start lg:justify-self-end">
+            <div class="flex flex-wrap items-center justify-start gap-2 lg:justify-end">
+              @for (p of periodosTech; track p.id) {
+                <button
+                  type="button"
+                  class="period-chip"
+                  [class.period-active]="periodo() === p.id && !usaRangoCustom()"
+                  (click)="cambiarPeriodo(p.id)"
+                >
+                  {{ p.label }}
+                </button>
+              }
+            </div>
+            <div class="flex flex-wrap items-end justify-start gap-3 lg:justify-end">
+              <label class="block text-xs font-medium text-slate-500">
+                Desde
+                <input
+                  type="date"
+                  class="mt-1 block rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-brand-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                  [value]="fechaDesde()"
+                  (change)="onFechaDesde($any($event.target).value)"
+                />
+              </label>
+              <label class="block text-xs font-medium text-slate-500">
+                Hasta
+                <input
+                  type="date"
+                  class="mt-1 block rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-brand-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                  [value]="fechaHasta()"
+                  (change)="onFechaHasta($any($event.target).value)"
+                />
+              </label>
+              @if (fechaDesde() || fechaHasta()) {
+                <button type="button" class="btn-ghost !text-xs border border-slate-200" (click)="limpiarFechas()">
+                  Quitar fechas
+                </button>
+              }
+            </div>
           </div>
-        </div>
-        <div class="mt-3 flex w-full flex-wrap items-end justify-start gap-3">
-          <label class="block text-xs font-medium text-slate-500">
-            Desde
-            <input
-              type="date"
-              class="mt-1 block rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-brand-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-              [value]="fechaDesde()"
-              (change)="onFechaDesde($any($event.target).value)"
-            />
-          </label>
-          <label class="block text-xs font-medium text-slate-500">
-            Hasta
-            <input
-              type="date"
-              class="mt-1 block rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-brand-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-              [value]="fechaHasta()"
-              (change)="onFechaHasta($any($event.target).value)"
-            />
-          </label>
-          @if (fechaDesde() || fechaHasta()) {
-            <button type="button" class="btn-ghost !text-xs border border-slate-200" (click)="limpiarFechas()">
-              Quitar fechas
-            </button>
-          }
         </div>
 
         @if (loading()) {
@@ -145,11 +147,11 @@ type SortDir = 'asc' | 'desc';
                       <td class="px-4 py-2.5">
                         <p class="font-medium text-brand-ink">{{ c.titulo }}</p>
                         <p class="text-xs text-slate-500">
-                          {{ c.numeroAseguradora }} ? {{ c.aseguradora }}
+                          {{ c.numeroAseguradora }} - {{ c.aseguradora }}
                         </p>
                       </td>
                       <td class="px-4 py-2.5 text-slate-600">
-                        {{ c.cerradoEn ? (c.cerradoEn | date: 'dd/MM/yyyy') : '?' }}
+                        {{ c.cerradoEn ? (c.cerradoEn | date: 'dd/MM/yyyy') : '—' }}
                       </td>
                       <td class="px-4 py-2.5 text-right tabular-nums font-semibold">
                         @if (c.pagoTecnico == null) {
@@ -181,50 +183,52 @@ type SortDir = 'asc' | 'desc';
           }
         }
       } @else {
-        <div class="flex flex-wrap items-end justify-between gap-4">
-          <div>
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+          <div class="min-w-0">
             <h1 class="text-3xl font-semibold text-brand-ink">Balance general</h1>
-            <p class="mt-1 max-w-2xl text-brand-soft/80">
-              Cobro del cliente, pago a técnicos y materiales. La utilidad ops se cuenta solo sobre casos Pagados (cliente).
+            <p class="mt-1 max-w-xl text-brand-soft/80">
+              Ingresos = cobro cliente. Técnicos y materiales = costo del periodo (pague o no el cliente). Utilidad OPS = ingresos - técnicos - materiales.
             </p>
           </div>
-          <div class="flex flex-wrap items-center gap-2">
-            @for (p of periodosAdmin; track p.id) {
-              <button
-                type="button"
-                class="period-chip"
-                [class.period-active]="periodo() === p.id && !usaRangoCustom()"
-                (click)="cambiarPeriodo(p.id)"
-              >
-                {{ p.label }}
-              </button>
-            }
+          <div class="flex flex-col items-stretch gap-3 justify-self-start lg:justify-self-end">
+            <div class="flex flex-wrap items-center justify-start gap-2 lg:justify-end">
+              @for (p of periodosAdmin; track p.id) {
+                <button
+                  type="button"
+                  class="period-chip"
+                  [class.period-active]="periodo() === p.id && !usaRangoCustom()"
+                  (click)="cambiarPeriodo(p.id)"
+                >
+                  {{ p.label }}
+                </button>
+              }
+            </div>
+            <div class="flex flex-wrap items-end justify-start gap-3 lg:justify-end">
+              <label class="block text-xs font-medium text-slate-500">
+                Desde
+                <input
+                  type="date"
+                  class="mt-1 block rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-brand-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                  [value]="fechaDesde()"
+                  (change)="onFechaDesde($any($event.target).value)"
+                />
+              </label>
+              <label class="block text-xs font-medium text-slate-500">
+                Hasta
+                <input
+                  type="date"
+                  class="mt-1 block rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-brand-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                  [value]="fechaHasta()"
+                  (change)="onFechaHasta($any($event.target).value)"
+                />
+              </label>
+              @if (fechaDesde() || fechaHasta()) {
+                <button type="button" class="btn-ghost !text-xs border border-slate-200" (click)="limpiarFechas()">
+                  Quitar fechas
+                </button>
+              }
+            </div>
           </div>
-        </div>
-        <div class="mt-3 flex w-full flex-wrap items-end justify-start gap-3">
-          <label class="block text-xs font-medium text-slate-500">
-            Desde
-            <input
-              type="date"
-              class="mt-1 block rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-brand-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-              [value]="fechaDesde()"
-              (change)="onFechaDesde($any($event.target).value)"
-            />
-          </label>
-          <label class="block text-xs font-medium text-slate-500">
-            Hasta
-            <input
-              type="date"
-              class="mt-1 block rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-brand-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-              [value]="fechaHasta()"
-              (change)="onFechaHasta($any($event.target).value)"
-            />
-          </label>
-          @if (fechaDesde() || fechaHasta()) {
-            <button type="button" class="btn-ghost !text-xs border border-slate-200" (click)="limpiarFechas()">
-              Quitar fechas
-            </button>
-          }
         </div>
 
         <div class="mt-5 flex flex-wrap gap-2">
@@ -254,7 +258,7 @@ type SortDir = 'asc' | 'desc';
                 </div>
                 <p class="kpi-value">{{ d.totales.pendienteEnviarCobro | cop }}</p>
                 <p class="kpi-hint">
-                  {{ d.totales.casosPendienteEnviarCobro }} ticket(s) · visita lista, falta armar la
+                  {{ d.totales.casosPendienteEnviarCobro }} ticket(s) - visita lista, falta armar la
                   factura
                 </p>
                 <a
@@ -276,7 +280,7 @@ type SortDir = 'asc' | 'desc';
                 </div>
                 <p class="kpi-value">{{ d.totales.pendientePago | cop }}</p>
                 <p class="kpi-hint">
-                  {{ d.totales.casosPendientePago }} ticket(s) · espera OK cliente o el pago
+                  {{ d.totales.casosPendientePago }} ticket(s) - espera OK cliente o el pago
                 </p>
                 <a
                   routerLink="/home"
@@ -297,7 +301,7 @@ type SortDir = 'asc' | 'desc';
                 </div>
                 <p class="kpi-value">{{ d.totales.ingresosCobrados | cop }}</p>
                 <p class="kpi-hint">
-                  {{ d.totales.casosCobrados }} ticket(s) · el cliente ya pagó
+                  {{ d.totales.casosCobrados }} ticket(s) - el cliente ya pagó
                 </p>
                 <a
                   routerLink="/home"
@@ -319,16 +323,17 @@ type SortDir = 'asc' | 'desc';
               <article class="kpi-card kpi-enviar">
                 <p class="kpi-label">Pago técnicos</p>
                 <p class="kpi-value kpi-value-sm">{{ d.totales.pagoTecnicos | cop }}</p>
-                <p class="kpi-hint">Solo sobre casos ya Pagados (cliente)</p>
+                <p class="kpi-hint">Costo del periodo (pague o no el cliente)</p>
               </article>
               <article class="kpi-card kpi-pendiente">
                 <p class="kpi-label">Materiales</p>
                 <p class="kpi-value kpi-value-sm">{{ d.totales.materiales | cop }}</p>
+                <p class="kpi-hint">Costo del periodo (pague o no el cliente)</p>
               </article>
               <article class="kpi-card kpi-utilidad">
                 <p class="kpi-label">Utilidad ops</p>
                 <p class="kpi-value kpi-value-sm">{{ d.totales.utilidadOperativa | cop }}</p>
-                <p class="kpi-hint">Ingreso cobrado ? técnico ? materiales (solo Pagadas)</p>
+                <p class="kpi-hint">Ingresos cobrados - técnicos - materiales (caja)</p>
               </article>
             </div>
 
@@ -344,7 +349,7 @@ type SortDir = 'asc' | 'desc';
               <div class="border-b border-slate-100 px-4 py-3">
                 <h2 class="font-semibold text-brand-ink">Utilidad por caso</h2>
                 <p class="mt-0.5 text-sm text-brand-soft/80">
-                  Solo casos Pagados (cliente). Si falta liquidar el técnico, el caso no suma a utilidad.
+                  Detalle por caso Pagado. La tarjeta Utilidad OPS es caja: ingresos - técnicos - materiales del periodo.
                 </p>
               </div>
               <div class="overflow-x-auto">
@@ -354,7 +359,7 @@ type SortDir = 'asc' | 'desc';
                       <th class="px-4 py-2.5 font-semibold">Caso</th>
                       <th class="px-4 py-2.5 font-semibold">Técnico</th>
                       <th class="px-4 py-2.5 font-semibold text-right">Ingreso</th>
-                      <th class="px-4 py-2.5 font-semibold text-right">Pago técnico</th>
+                      <th class="px-4 py-2.5 font-semibold text-right">Pago tcnico</th>
                       <th class="px-4 py-2.5 font-semibold text-right">Materiales</th>
                       <th class="px-4 py-2.5 font-semibold text-right">Utilidad</th>
                     </tr>
@@ -371,11 +376,11 @@ type SortDir = 'asc' | 'desc';
                             {{ row.titulo }}
                           </a>
                           <p class="text-xs text-slate-500">
-                            {{ row.numeroAseguradora }} ? {{ row.aseguradora }}
+                            {{ row.numeroAseguradora }} - {{ row.aseguradora }}
                           </p>
                         </td>
                         <td class="px-4 py-2.5 text-brand-soft">
-                          {{ row.tecnicoNombre ?? '?' }}
+                          {{ row.tecnicoNombre ?? '-' }}
                         </td>
                         <td class="px-4 py-2.5 text-right tabular-nums">
                           {{ row.ingreso | cop }}
@@ -413,7 +418,7 @@ type SortDir = 'asc' | 'desc';
             @if (d.porTecnico.length) {
               <section class="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-soft">
                 <div class="border-b border-slate-100 px-4 py-3">
-                  <h2 class="font-semibold text-brand-ink">Por técnico</h2>
+                  <h2 class="font-semibold text-brand-ink">Por tcnico</h2>
                   <p class="mt-0.5 text-sm text-brand-soft/80">Suma a pagar en el periodo.</p>
                 </div>
                 <div class="overflow-x-auto">
@@ -598,7 +603,7 @@ type SortDir = 'asc' | 'desc';
                         <div class="min-w-0 flex-1">
                           <p class="truncate font-medium text-brand-ink">{{ c.titulo }}</p>
                           <p class="mt-0.5 text-xs text-slate-500">
-                            {{ c.numeroAseguradora }} ? {{ c.aseguradora }}
+                            {{ c.numeroAseguradora }} - {{ c.aseguradora }}
                           </p>
                         </div>
                         <p class="shrink-0 font-semibold tabular-nums text-enviar">
@@ -636,7 +641,7 @@ type SortDir = 'asc' | 'desc';
                         <div class="min-w-0 flex-1">
                           <p class="truncate font-medium text-brand-ink">{{ c.titulo }}</p>
                           <p class="mt-0.5 text-xs text-slate-500">
-                            {{ c.numeroAseguradora }} ? {{ c.aseguradora }}
+                            {{ c.numeroAseguradora }} - {{ c.aseguradora }}
                           </p>
                           <span class="badge mt-1.5" [ngClass]="estadoClass(c.estado)">{{
                             labelEstado(c.estado)
@@ -664,7 +669,7 @@ type SortDir = 'asc' | 'desc';
                     </span>
                     <div>
                       <h2 class="font-semibold text-brand-ink">Pagadas (cliente)</h2>
-                      <p class="mt-0.5 text-xs text-brand-soft">El cliente ya pagó</p>
+                      <p class="mt-0.5 text-xs text-brand-soft">El cliente ya pag</p>
                     </div>
                   </div>
                 </div>
@@ -679,7 +684,7 @@ type SortDir = 'asc' | 'desc';
                         <div class="min-w-0 flex-1">
                           <p class="truncate font-medium text-brand-ink">{{ c.titulo }}</p>
                           <p class="mt-0.5 text-xs text-slate-500">
-                            {{ c.aseguradora }} ? {{ c.updatedAt | date: 'dd/MM/yyyy' }}
+                            {{ c.aseguradora }} - {{ c.updatedAt | date: 'dd/MM/yyyy' }}
                           </p>
                         </div>
                         <p class="shrink-0 font-semibold tabular-nums text-cobrado">
