@@ -3,7 +3,7 @@
  *
  *   Preview Vercel → Railway QA
  *   Production    → Railway PROD
- *   ng serve      → environment.ts (localhost) — no usa este script
+ *   ng serve      → environment.ts (API Railway QA) — no usa este script
  */
 import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
