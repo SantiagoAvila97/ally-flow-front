@@ -1,4 +1,4 @@
-﻿import { DatePipe, DecimalPipe, NgClass } from '@angular/common';
+﻿import { DatePipe, NgClass } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
@@ -26,7 +26,8 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { CasosService } from '../../core/services/casos.service';
 import { CostosService } from '../../core/services/costos.service';
-import type { Caso, EstadoCaso, LineaCobro, TecnicoOption, TipoFirmaCierre } from '../../core/models/caso.model';
+import type { Caso, EstadoCaso, GastoMaterial, LineaCobro, TecnicoOption, TipoFirmaCierre } from '../../core/models/caso.model';
+import { ESTADOS_GASTOS_OPERACION } from '../../core/models/caso.model';
 import type { CategoriaConItems, ItemCosto } from '../../core/models/costo.model';
 import { labelEstadoCaso } from '../../core/labels/estado-caso';
 import { prepareEvidencePhoto } from '../../core/utils/evidence-photo';
@@ -35,6 +36,7 @@ import { returnLabel, safeReturnTo } from '../../shared/nav-return';
 import { SignaturePadComponent } from '../../shared/signature-pad.component';
 import { SkeletonComponent } from '../../shared/skeleton.component';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
+import { CopPipe, formatCop } from '../../shared/cop.pipe';
 
 type ConfirmKind =
   | 'asignar'
@@ -57,7 +59,6 @@ interface ConfirmEstadoPayload {
   standalone: true,
   imports: [
     DatePipe,
-    DecimalPipe,
     NgClass,
     FormsModule,
     RouterLink,
@@ -82,6 +83,7 @@ interface ConfirmEstadoPayload {
     LucideX,
     SkeletonComponent,
     ConfirmDialogComponent,
+    CopPipe,
   ],
   template: `
     <div class="pb-16">
@@ -263,10 +265,10 @@ interface ConfirmEstadoPayload {
                             </div>
                           </td>
                           <td class="py-2 pr-2 text-right tabular-nums">
-                            {{ linea.precioUnitario | number: '1.0-2' }}
+                            {{ linea.precioUnitario | cop }}
                           </td>
                           <td class="py-2 pr-2 text-right tabular-nums font-medium">
-                            {{ linea.cantidad * linea.precioUnitario | number: '1.0-2' }}
+                            {{ linea.cantidad * linea.precioUnitario | cop }}
                           </td>
                           <td class="py-2 text-right">
                             <button
@@ -289,7 +291,7 @@ interface ConfirmEstadoPayload {
                           Total
                         </td>
                         <td class="pt-3 text-right font-semibold tabular-nums">
-                          {{ totalDraft() | number: '1.0-2' }}
+                          {{ totalDraft() | cop }}
                         </td>
                         <td></td>
                       </tr>
@@ -353,7 +355,9 @@ interface ConfirmEstadoPayload {
                 <button
                   type="button"
                   class="btn-estado"
-                  [disabled]="busy() || lineasSaving() || !draftLineas.length"
+                  [disabled]="
+                    busy() || lineasSaving() || !draftLineas.length || !tieneGastosOperacion(c)
+                  "
                   (click)="pedirMarcarEnviado(c)"
                 >
                   @if (busy()) {
@@ -364,6 +368,13 @@ interface ConfirmEstadoPayload {
                   Marcar enviado
                 </button>
               </div>
+              @if (!tieneGastosOperacion(c)) {
+                <p class="mt-3 text-sm text-amber-800">
+                  Antes de enviar la factura, registra el
+                  <strong>pago al técnico</strong> (y materiales si aplica) en Gastos de
+                  operación.
+                </p>
+              }
             </section>
           }
 
@@ -412,7 +423,12 @@ interface ConfirmEstadoPayload {
                 Marca como pagada cuando hayas recibido el pago de el cliente.
               </p>
               <div class="mt-4 flex flex-wrap gap-2">
-                <button type="button" class="btn-estado" [disabled]="busy()" (click)="pedirCobrar(c)">
+                <button
+                  type="button"
+                  class="btn-estado"
+                  [disabled]="busy() || !tieneGastosOperacion(c)"
+                  (click)="pedirCobrar(c)"
+                >
                   @if (busy()) {
                     <span class="spinner"></span>
                   } @else {
@@ -434,6 +450,256 @@ interface ConfirmEstadoPayload {
                   Descargar PDF
                 </button>
               </div>
+              @if (!tieneGastosOperacion(c)) {
+                <p class="mt-3 text-sm text-amber-800">
+                  Falta el <strong>pago al técnico</strong> en Gastos de operación para marcar
+                  pagada.
+                </p>
+              }
+            </section>
+          }
+
+          @if (canVerGastosOperacion(c)) {
+            <section class="mt-8 rounded-lg border border-slate-200 bg-white p-5">
+              <h2 class="text-sm font-semibold text-brand-ink">Gastos de operación</h2>
+              <p class="mt-1 text-sm text-slate-600">
+                @if (canEditGastosOperacion(c)) {
+                  Auditoría: solo admin edita pago al técnico y puede modificar o borrar
+                  materiales. Obligatorios antes de enviar factura / marcar pagada.
+                } @else {
+                  Tras el cierre de visita puedes adjuntar facturas de materiales. Solo el
+                  administrador puede editar o borrar lo ya cargado.
+                }
+              </p>
+
+              @if (canEditGastosOperacion(c)) {
+                <label class="mt-4 block max-w-xs">
+                  <span class="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500"
+                    >Pago al técnico</span
+                  >
+                  <input
+                    class="field"
+                    type="number"
+                    min="0"
+                    [(ngModel)]="draftPagoTecnico"
+                    name="pagoTecnico"
+                    placeholder="Ej. 80000"
+                  />
+                </label>
+              } @else if (c.pagoTecnico != null) {
+                <p class="mt-4 text-sm">
+                  <span class="text-xs uppercase text-slate-500">Pago al técnico</span><br />
+                  <span class="font-semibold tabular-nums">{{ c.pagoTecnico | cop }}</span>
+                </p>
+              } @else {
+                <p class="mt-4 text-sm text-amber-800">Pago al técnico pendiente de liquidar (admin).</p>
+              }
+
+              <div class="mt-4">
+                <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Materiales / facturas</p>
+
+                @if (canEditGastosOperacion(c)) {
+                  @if (draftMateriales.length) {
+                    <ul class="mt-2 space-y-3">
+                      @for (m of draftMateriales; track m.id; let i = $index) {
+                        <li class="rounded-md border border-slate-100 bg-slate-50/80 p-3">
+                          <div class="flex flex-wrap items-end gap-2">
+                            <label class="min-w-[160px] flex-1">
+                              <span class="sr-only">Descripción</span>
+                              <input
+                                class="field"
+                                [(ngModel)]="m.descripcion"
+                                [name]="'matDesc' + i"
+                                placeholder="Factura / material"
+                              />
+                            </label>
+                            <label class="w-28">
+                              <span class="sr-only">Monto</span>
+                              <input
+                                class="field"
+                                type="number"
+                                min="0"
+                                [(ngModel)]="m.monto"
+                                [name]="'matMonto' + i"
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              class="icon-btn icon-btn-danger"
+                              (click)="quitarMaterial(i)"
+                              title="Quitar"
+                            >
+                              <svg lucideTrash2 [size]="16"></svg>
+                            </button>
+                          </div>
+                          <div class="mt-2 flex flex-wrap items-center gap-3">
+                            @if (m.fotoUrl) {
+                              <a [href]="m.fotoUrl" target="_blank" rel="noopener">
+                                <img
+                                  [src]="m.fotoUrl"
+                                  alt="Factura"
+                                  class="h-16 w-24 rounded border object-cover"
+                                />
+                              </a>
+                              <button type="button" class="btn-ghost !text-xs" (click)="m.fotoUrl = null">
+                                Quitar foto
+                              </button>
+                            }
+                            <label class="btn-ghost !text-xs cursor-pointer border border-slate-200">
+                              <svg lucideImagePlus [size]="14"></svg>
+                              {{ m.fotoUrl ? 'Cambiar foto' : 'Foto factura' }}
+                              <input
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp,image/*"
+                                class="sr-only"
+                                [disabled]="matFotoBusy()"
+                                (change)="onMaterialFoto($event, i)"
+                              />
+                            </label>
+                          </div>
+                        </li>
+                      }
+                    </ul>
+                  } @else {
+                    <p class="mt-2 text-sm text-slate-500">Sin materiales registrados.</p>
+                  }
+                  <button type="button" class="btn-primary mt-3" (click)="agregarMaterial()">
+                    <svg lucidePlus [size]="16"></svg>
+                    Agregar factura / material
+                  </button>
+                } @else {
+                  @if (c.gastosMateriales.length) {
+                    <ul class="mt-2 space-y-2">
+                      @for (m of c.gastosMateriales; track m.id) {
+                        <li class="flex flex-wrap items-center gap-3 rounded-md border border-slate-100 bg-slate-50/80 p-2">
+                          @if (m.fotoUrl) {
+                            <a [href]="m.fotoUrl" target="_blank" rel="noopener">
+                              <img
+                                [src]="m.fotoUrl"
+                                alt="Factura"
+                                class="h-14 w-20 rounded border object-cover"
+                              />
+                            </a>
+                          }
+                          <div class="min-w-0 flex-1">
+                            <p class="font-medium text-brand-ink">{{ m.descripcion }}</p>
+                            <p class="tabular-nums text-sm text-slate-600">{{ m.monto | cop }}</p>
+                          </div>
+                        </li>
+                      }
+                    </ul>
+                  } @else {
+                    <p class="mt-2 text-sm text-slate-500">Aún no hay facturas adjuntas.</p>
+                  }
+
+                  <div class="mt-4 rounded-md border border-dashed border-slate-300 p-3">
+                    <p class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      Adjuntar factura
+                    </p>
+                    <div class="mt-2 flex flex-wrap items-end gap-2">
+                      <label class="min-w-[160px] flex-1">
+                        <input
+                          class="field"
+                          [(ngModel)]="nuevoMaterial.descripcion"
+                          name="nuevoMatDesc"
+                          placeholder="Descripción"
+                        />
+                      </label>
+                      <label class="w-28">
+                        <input
+                          class="field"
+                          type="number"
+                          min="0"
+                          [(ngModel)]="nuevoMaterial.monto"
+                          name="nuevoMatMonto"
+                          placeholder="Monto"
+                        />
+                      </label>
+                    </div>
+                    <div class="mt-2 flex flex-wrap items-center gap-2">
+                      @if (nuevoMaterial.fotoUrl) {
+                        <img
+                          [src]="nuevoMaterial.fotoUrl"
+                          alt="Vista previa"
+                          class="h-14 w-20 rounded border object-cover"
+                        />
+                        <button
+                          type="button"
+                          class="btn-ghost !text-xs"
+                          (click)="nuevoMaterial.fotoUrl = null"
+                        >
+                          Quitar
+                        </button>
+                      }
+                      <label class="btn-ghost !text-xs cursor-pointer border border-slate-200">
+                        <svg lucideImagePlus [size]="14"></svg>
+                        Foto de la factura
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp,image/*"
+                          class="sr-only"
+                          [disabled]="matFotoBusy()"
+                          (change)="onNuevoMaterialFoto($event)"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        class="btn-primary !text-xs"
+                        [disabled]="busy() || matAdjuntando() || !puedeAdjuntarNuevo()"
+                        (click)="adjuntarMaterial(c)"
+                      >
+                        @if (matAdjuntando()) {
+                          <span class="spinner spinner-sm"></span>
+                        } @else {
+                          <svg lucidePlus [size]="14"></svg>
+                        }
+                        Adjuntar
+                      </button>
+                    </div>
+                  </div>
+                }
+              </div>
+
+              @if (canEditGastosOperacion(c)) {
+                <div class="mt-4 grid gap-2 text-sm sm:grid-cols-3">
+                  <p>
+                    <span class="text-xs uppercase text-slate-500">Materiales</span><br />
+                    <span class="font-semibold tabular-nums">{{ totalDraftMateriales() | cop }}</span>
+                  </p>
+                  <p>
+                    <span class="text-xs uppercase text-slate-500">Gasto ops</span><br />
+                    <span class="font-semibold tabular-nums">{{ totalDraftGastoOps() | cop }}</span>
+                  </p>
+                  <p>
+                    <span class="text-xs uppercase text-slate-500">Utilidad vs cobro</span><br />
+                    <span class="font-semibold tabular-nums">{{ utilidadDraft(c) | cop }}</span>
+                  </p>
+                </div>
+              }
+
+              @if (gastosError()) {
+                <p class="mt-3 text-sm text-red-600">{{ gastosError() }}</p>
+              }
+              @if (gastosOk()) {
+                <p class="mt-3 text-sm font-medium text-emerald-700">Guardado.</p>
+              }
+
+              @if (canEditGastosOperacion(c)) {
+                <button
+                  type="button"
+                  class="btn-estado mt-4"
+                  [disabled]="busy() || gastosSaving()"
+                  (click)="guardarGastosOperacion(c)"
+                >
+                  @if (gastosSaving()) {
+                    <span class="spinner"></span>
+                    Guardando…
+                  } @else {
+                    <svg lucideSave [size]="16"></svg>
+                    Guardar gastos
+                  }
+                </button>
+              }
             </section>
           }
 
@@ -726,6 +992,18 @@ interface ConfirmEstadoPayload {
         opacity: 0.4;
         cursor: not-allowed;
       }
+      .field {
+        width: 100%;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.375rem;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+        outline: none;
+      }
+      .field:focus {
+        border-color: #0f766e;
+        box-shadow: 0 0 0 3px rgb(15 118 110 / 0.15);
+      }
       .btn-back {
         display: inline-flex;
         align-items: center;
@@ -767,7 +1045,7 @@ export class CasoDetalleComponent implements OnInit {
         if (!item.activo) continue;
         opts.push({
           id: item.id,
-          label: `${cat.nombre} · ${item.nombre} — ${item.precioSugerido.toLocaleString('es-CO')} / ${item.unidad}`,
+          label: `${cat.nombre} · ${item.nombre} — ${formatCop(item.precioSugerido)} / ${item.unidad}`,
         });
       }
     }
@@ -802,6 +1080,14 @@ export class CasoDetalleComponent implements OnInit {
   notaDocumentacion = '';
   tipoFirma: TipoFirmaCierre = 'TECNICO';
   links = mapsLinks('', '');
+  draftPagoTecnico: number | null = null;
+  draftMateriales: GastoMaterial[] = [];
+  nuevoMaterial: GastoMaterial = { id: '', descripcion: '', monto: 0, fotoUrl: null };
+  readonly gastosSaving = signal(false);
+  readonly matAdjuntando = signal(false);
+  readonly matFotoBusy = signal(false);
+  readonly gastosError = signal<string | null>(null);
+  readonly gastosOk = signal(false);
   private lineasPersistTimer?: ReturnType<typeof setTimeout>;
   private skipNextDraftSync = false;
 
@@ -905,6 +1191,26 @@ export class CasoDetalleComponent implements OnInit {
     return this.isAdmin() && !c.esGarantia && c.estado === 'PendienteRecepcionPago';
   }
 
+  canEditGastosOperacion(c: Caso): boolean {
+    return (
+      this.isAdmin() &&
+      !c.esGarantia &&
+      (ESTADOS_GASTOS_OPERACION as readonly string[]).includes(c.estado)
+    );
+  }
+
+  /** Admin (edición) o asesor (solo adjuntar) tras cierre de visita. */
+  canVerGastosOperacion(c: Caso): boolean {
+    if (c.esGarantia) return false;
+    if (!(ESTADOS_GASTOS_OPERACION as readonly string[]).includes(c.estado)) return false;
+    return this.isAdmin() || this.isAsesor();
+  }
+
+  /** Pago al técnico definido (materiales pueden ir vacíos = $0). */
+  tieneGastosOperacion(c: Caso): boolean {
+    return c.pagoTecnico != null && Number.isFinite(c.pagoTecnico) && c.pagoTecnico >= 0;
+  }
+
   canGarantia(c: Caso): boolean {
     return (
       this.isAdmin() &&
@@ -941,6 +1247,145 @@ export class CasoDetalleComponent implements OnInit {
 
   totalDraft(): number {
     return this.draftLineas.reduce((sum, l) => sum + l.cantidad * l.precioUnitario, 0);
+  }
+
+  totalDraftMateriales(): number {
+    return this.draftMateriales.reduce((s, m) => s + Number(m.monto || 0), 0);
+  }
+
+  totalDraftGastoOps(): number {
+    return (Number(this.draftPagoTecnico) || 0) + this.totalDraftMateriales();
+  }
+
+  utilidadDraft(c: Caso): number {
+    const ingreso =
+      this.draftLineas.length > 0
+        ? this.totalDraft()
+        : (c.lineasCobro ?? []).reduce((s, l) => s + l.cantidad * l.precioUnitario, 0) ||
+          (c.montoEstimado ?? 0);
+    return ingreso - this.totalDraftGastoOps();
+  }
+
+  agregarMaterial(): void {
+    this.draftMateriales = [
+      ...this.draftMateriales,
+      {
+        id: `mat-${Date.now().toString(36)}`,
+        descripcion: '',
+        monto: 0,
+        fotoUrl: null,
+      },
+    ];
+    this.gastosOk.set(false);
+  }
+
+  quitarMaterial(index: number): void {
+    this.draftMateriales = this.draftMateriales.filter((_, i) => i !== index);
+    this.gastosOk.set(false);
+  }
+
+  puedeAdjuntarNuevo(): boolean {
+    return this.nuevoMaterial.descripcion.trim().length > 0 && Number(this.nuevoMaterial.monto) >= 0;
+  }
+
+  async onMaterialFoto(ev: Event, index: number): Promise<void> {
+    const input = ev.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    this.matFotoBusy.set(true);
+    this.gastosError.set(null);
+    try {
+      const dataUrl = await prepareEvidencePhoto(file);
+      const row = this.draftMateriales[index];
+      if (row) row.fotoUrl = dataUrl;
+      this.gastosOk.set(false);
+    } catch (err) {
+      this.gastosError.set(err instanceof Error ? err.message : 'No se pudo procesar la foto');
+    } finally {
+      this.matFotoBusy.set(false);
+    }
+  }
+
+  async onNuevoMaterialFoto(ev: Event): Promise<void> {
+    const input = ev.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    this.matFotoBusy.set(true);
+    this.gastosError.set(null);
+    try {
+      this.nuevoMaterial.fotoUrl = await prepareEvidencePhoto(file);
+    } catch (err) {
+      this.gastosError.set(err instanceof Error ? err.message : 'No se pudo procesar la foto');
+    } finally {
+      this.matFotoBusy.set(false);
+    }
+  }
+
+  adjuntarMaterial(c: Caso): void {
+    if (!this.puedeAdjuntarNuevo()) return;
+    this.matAdjuntando.set(true);
+    this.gastosError.set(null);
+    this.gastosOk.set(false);
+    const item: GastoMaterial = {
+      id: `mat-${Date.now().toString(36)}`,
+      descripcion: this.nuevoMaterial.descripcion.trim(),
+      monto: Math.round(Number(this.nuevoMaterial.monto) || 0),
+      fotoUrl: this.nuevoMaterial.fotoUrl,
+    };
+    this.casosService.adjuntarMateriales(c.id, [item]).subscribe({
+      next: (updated) => {
+        this.matAdjuntando.set(false);
+        this.gastosOk.set(true);
+        this.nuevoMaterial = { id: '', descripcion: '', monto: 0, fotoUrl: null };
+        this.syncCasoLocal(updated);
+      },
+      error: (err) => {
+        this.matAdjuntando.set(false);
+        this.gastosError.set(err?.error?.message ?? 'No se pudo adjuntar el material');
+      },
+    });
+  }
+
+  guardarGastosOperacion(c: Caso): void {
+    this.gastosSaving.set(true);
+    this.gastosError.set(null);
+    this.gastosOk.set(false);
+    const materiales = this.draftMateriales
+      .map((m) => ({
+        id: m.id,
+        descripcion: m.descripcion.trim(),
+        monto: Math.round(Number(m.monto) || 0),
+        fotoUrl: m.fotoUrl ?? null,
+      }))
+      .filter((m) => m.descripcion.length > 0);
+    const pagoRaw = this.draftPagoTecnico;
+    const pagoTecnico =
+      pagoRaw === null || pagoRaw === undefined || pagoRaw === ('' as unknown)
+        ? null
+        : Math.round(Number(pagoRaw));
+    if (pagoTecnico !== null && (!Number.isFinite(pagoTecnico) || pagoTecnico < 0)) {
+      this.gastosSaving.set(false);
+      this.gastosError.set('Pago al técnico inválido');
+      return;
+    }
+    this.casosService
+      .setGastosOperacion(c.id, {
+        pagoTecnico,
+        gastosMateriales: materiales,
+      })
+      .subscribe({
+        next: (updated) => {
+          this.gastosSaving.set(false);
+          this.gastosOk.set(true);
+          this.syncCasoLocal(updated);
+        },
+        error: (err) => {
+          this.gastosSaving.set(false);
+          this.gastosError.set(err?.error?.message ?? 'No se pudieron guardar los gastos');
+        },
+      });
   }
 
   agregarLinea(): void {
@@ -1094,11 +1539,17 @@ export class CasoDetalleComponent implements OnInit {
       this.actionError.set('Agrega al menos un ítem de cobro antes de marcar enviado');
       return;
     }
+    if (!this.tieneGastosOperacion(c)) {
+      this.actionError.set(
+        'Registra el pago al técnico (y materiales si aplica) antes de enviar la factura',
+      );
+      return;
+    }
     const lineas = this.normalizeDraftLineas();
     const total = lineas.reduce((s, l) => s + l.cantidad * l.precioUnitario, 0);
     const items = lineas.map(
       (l) =>
-        `· ${l.nombre} × ${l.cantidad} ${l.unidad} = ${(l.cantidad * l.precioUnitario).toLocaleString('es-CO')}`,
+        `· ${l.nombre} × ${l.cantidad} ${l.unidad} = ${formatCop(l.cantidad * l.precioUnitario)}`,
     );
     this.abrirConfirmacion({
       kind: 'enviar',
@@ -1109,7 +1560,8 @@ export class CasoDetalleComponent implements OnInit {
         `Nº: ${c.numeroAseguradora} · ${c.aseguradora}`,
         `Titular: ${c.titularNombre}`,
         ...items,
-        `Total: ${total.toLocaleString('es-CO')} COP`,
+        `Total: ${formatCop(total)}`,
+        `Pago técnico: ${formatCop(c.pagoTecnico)}`,
         'Se marcará la factura como enviada a el cliente.',
         'El caso quedará esperando el OK / devolución.',
         'Revisa ítems y total antes de continuar.',
@@ -1130,11 +1582,20 @@ export class CasoDetalleComponent implements OnInit {
   }
 
   pedirCobrar(c: Caso): void {
+    if (!this.tieneGastosOperacion(c)) {
+      this.actionError.set(
+        'Registra el pago al técnico (y materiales si aplica) antes de marcar pagada',
+      );
+      return;
+    }
     this.abrirConfirmacion({
       kind: 'cobrar',
       fromLabel: this.labelEstado('PendienteRecepcionPago'),
       toLabel: this.labelEstado('Cobrado'),
-      lines: this.resumenCobro(c, ['Se registrará el pago: la factura quedará pagada.']),
+      lines: this.resumenCobro(c, [
+        `Pago técnico: ${formatCop(c.pagoTecnico)}`,
+        'Se registrará el pago: la factura quedará pagada (aseguradora).',
+      ]),
     });
   }
 
@@ -1235,14 +1696,14 @@ export class CasoDetalleComponent implements OnInit {
     const total = lineas.reduce((s, l) => s + l.cantidad * l.precioUnitario, 0);
     const items = lineas.map(
       (l) =>
-        `· ${l.nombre} × ${l.cantidad} ${l.unidad} = ${(l.cantidad * l.precioUnitario).toLocaleString('es-CO')}`,
+        `· ${l.nombre} × ${l.cantidad} ${l.unidad} = ${formatCop(l.cantidad * l.precioUnitario)}`,
     );
     return [
       `Caso: ${c.titulo}`,
       `Nº: ${c.numeroAseguradora} · ${c.aseguradora}`,
       `Titular: ${c.titularNombre}`,
       ...items,
-      `Total: ${total.toLocaleString('es-CO')} COP`,
+      `Total: ${formatCop(total)}`,
       ...extras,
     ];
   }
@@ -1343,6 +1804,21 @@ export class CasoDetalleComponent implements OnInit {
     this.draftLineas = (c.lineasCobro ?? []).map((l) => ({ ...l }));
   }
 
+  private syncDraftGastos(c: Caso): void {
+    this.draftPagoTecnico = c.pagoTecnico ?? null;
+    this.draftMateriales = (c.gastosMateriales ?? []).map((m) => ({
+      ...m,
+      fotoUrl: m.fotoUrl ?? null,
+    }));
+  }
+
+  private syncCasoLocal(updated: Caso): void {
+    this.caso.set(updated);
+    this.syncDraftLineas(updated);
+    this.syncDraftGastos(updated);
+    this.applyMap(updated);
+  }
+
   private applyMap(c: Caso): void {
     this.links = mapsLinks(c.direccion, c.ciudad, c.lat, c.lon);
     if (this.showServiceMap(c) && this.links.embed) {
@@ -1359,6 +1835,7 @@ export class CasoDetalleComponent implements OnInit {
       next: (updated) => {
         this.caso.set(updated);
         this.syncDraftLineas(updated);
+        this.syncDraftGastos(updated);
         this.applyMap(updated);
         this.busy.set(false);
         after?.();
@@ -1377,6 +1854,7 @@ export class CasoDetalleComponent implements OnInit {
         this.caso.set(c);
         if (c.tecnicoId) this.tecnicoSelected = c.tecnicoId;
         this.syncDraftLineas(c);
+        this.syncDraftGastos(c);
         this.applyMap(c);
         this.loading.set(false);
       },

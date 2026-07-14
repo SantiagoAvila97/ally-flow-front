@@ -2,7 +2,11 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import type { BalancePeriodo, BalanceResumen } from '../models/balance.model';
+import type {
+  BalancePeriodo,
+  BalanceResumen,
+  BalanceTecnicoResumen,
+} from '../models/balance.model';
 
 interface ApiList<T> {
   data: T;
@@ -16,6 +20,12 @@ export class BalanceService {
   getResumen(periodo: BalancePeriodo = 'all'): Observable<BalanceResumen> {
     return this.http
       .get<ApiList<BalanceResumen>>(this.base, { params: { periodo } })
+      .pipe(map((r) => r.data));
+  }
+
+  getResumenTecnico(periodo: BalancePeriodo = 'all'): Observable<BalanceTecnicoResumen> {
+    return this.http
+      .get<ApiList<BalanceTecnicoResumen>>(`${this.base}/tecnico`, { params: { periodo } })
       .pipe(map((r) => r.data));
   }
 }

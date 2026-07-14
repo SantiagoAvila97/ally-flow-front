@@ -1,4 +1,4 @@
-﻿import { DecimalPipe, NgClass } from '@angular/common';
+﻿import { NgClass } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -18,6 +18,7 @@ import { CostosService } from '../../core/services/costos.service';
 import type { Aseguradora } from '../../core/models/catalogo.model';
 import type { CategoriaConItems, ItemCosto, PlantillaPdfCobro } from '../../core/models/costo.model';
 import { returnLabel, safeReturnTo } from '../../shared/nav-return';
+import { CopPipe } from '../../shared/cop.pipe';
 import { SkeletonComponent } from '../../shared/skeleton.component';
 import {
   ConfirmDialogComponent,
@@ -29,7 +30,6 @@ type ItemForm = {
   categoriaId: string;
   nombre: string;
   descripcion: string;
-  costoInterno: number | null;
   precioSugerido: number | null;
   unidad: string;
   activo: boolean;
@@ -48,7 +48,6 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
   selector: 'app-costos',
   standalone: true,
   imports: [
-    DecimalPipe,
     NgClass,
     FormsModule,
     RouterLink,
@@ -62,6 +61,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
     LucideX,
     SkeletonComponent,
     ConfirmDialogComponent,
+    CopPipe,
   ],
   template: `
     <main class="mx-auto max-w-6xl px-6 py-8">
@@ -598,7 +598,6 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                       <tr>
                         <th class="px-4 py-2.5 font-semibold">Ítem</th>
                         <th class="px-4 py-2.5 font-semibold">Unidad</th>
-                        <th class="px-4 py-2.5 font-semibold">Costo interno</th>
                         <th class="px-4 py-2.5 font-semibold">Precio sugerido</th>
                         <th class="px-4 py-2.5 font-semibold">Estado</th>
                         <th class="px-4 py-2.5 font-semibold"></th>
@@ -615,10 +614,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                           </td>
                           <td class="px-4 py-3 text-brand-soft">{{ item.unidad }}</td>
                           <td class="px-4 py-3 text-brand-soft">
-                            {{ item.costoInterno | number: '1.0-0' }}
-                          </td>
-                          <td class="px-4 py-3 text-brand-soft">
-                            {{ item.precioSugerido | number: '1.0-0' }}
+                            {{ item.precioSugerido | cop }}
                           </td>
                           <td class="px-4 py-3">
                             <span
@@ -756,18 +752,7 @@ type TabId = 'tarifas' | 'pdf' | 'aseguradoras';
                   placeholder="Qué incluye el ítem"
                 />
               </label>
-              <div class="grid gap-4 sm:grid-cols-3">
-                <label class="block">
-                  <span class="mb-1 block text-sm font-medium">Costo interno *</span>
-                  <input
-                    class="field"
-                    type="number"
-                    min="0"
-                    [(ngModel)]="itemForm.costoInterno"
-                    name="itemCosto"
-                    required
-                  />
-                </label>
+              <div class="grid gap-4 sm:grid-cols-2">
                 <label class="block">
                   <span class="mb-1 block text-sm font-medium">Precio sugerido *</span>
                   <input
@@ -1030,7 +1015,6 @@ export class CostosComponent implements OnInit {
     categoriaId: '',
     nombre: '',
     descripcion: '',
-    costoInterno: null,
     precioSugerido: null,
     unidad: 'und',
     activo: true,
@@ -1557,7 +1541,6 @@ export class CostosComponent implements OnInit {
       categoriaId,
       nombre: '',
       descripcion: '',
-      costoInterno: null,
       precioSugerido: null,
       unidad: 'und',
       activo: true,
@@ -1571,7 +1554,6 @@ export class CostosComponent implements OnInit {
       categoriaId: item.categoriaId,
       nombre: item.nombre,
       descripcion: item.descripcion,
-      costoInterno: item.costoInterno,
       precioSugerido: item.precioSugerido,
       unidad: item.unidad,
       activo: item.activo,
@@ -1591,8 +1573,8 @@ export class CostosComponent implements OnInit {
       this.error.set('Completa todos los campos del ítem');
       return;
     }
-    if (this.itemForm.costoInterno == null || this.itemForm.precioSugerido == null) {
-      this.error.set('Costo interno y precio sugerido son obligatorios');
+    if (this.itemForm.precioSugerido == null) {
+      this.error.set('Precio sugerido es obligatorio');
       return;
     }
 
@@ -1602,7 +1584,6 @@ export class CostosComponent implements OnInit {
       categoriaId: this.itemForm.categoriaId,
       nombre,
       descripcion,
-      costoInterno: Number(this.itemForm.costoInterno),
       precioSugerido: Number(this.itemForm.precioSugerido),
       unidad,
       activo: this.itemForm.activo,

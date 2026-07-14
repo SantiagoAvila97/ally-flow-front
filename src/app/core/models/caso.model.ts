@@ -29,6 +29,13 @@ export interface LineaCobro {
   precioUnitario: number;
 }
 
+export interface GastoMaterial {
+  id: string;
+  descripcion: string;
+  monto: number;
+  fotoUrl: string | null;
+}
+
 export const ESTADOS_OCULTOS_TECNICO: EstadoCaso[] = [
   'PendienteDocumentoCobro',
   'PendienteConfirmacionAsegurado',
@@ -36,6 +43,13 @@ export const ESTADOS_OCULTOS_TECNICO: EstadoCaso[] = [
   'Cobrado',
   'EnGarantia',
   'CerradoGarantia',
+];
+
+export const ESTADOS_GASTOS_OPERACION: EstadoCaso[] = [
+  'PendienteDocumentoCobro',
+  'PendienteConfirmacionAsegurado',
+  'PendienteRecepcionPago',
+  'Cobrado',
 ];
 
 export interface Caso {
@@ -67,6 +81,8 @@ export interface Caso {
   montoEstimado: number | null;
   lineasCobro: LineaCobro[];
   documentoCobroGeneradoAt: string | null;
+  pagoTecnico: number | null;
+  gastosMateriales: GastoMaterial[];
   historialCambios: HistorialCambio[];
   createdAt: string;
   updatedAt: string;

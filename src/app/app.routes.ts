@@ -51,7 +51,7 @@ export const routes: Routes = [
       {
         path: 'balance',
         canActivate: [authGuard],
-        data: { roles: ['ADMIN'] },
+        data: { roles: ['ADMIN', 'TECNICO'] },
         loadComponent: () =>
           import('./features/balance/balance.component').then((m) => m.BalanceComponent),
       },

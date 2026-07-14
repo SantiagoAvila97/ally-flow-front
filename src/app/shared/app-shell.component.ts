@@ -286,7 +286,7 @@ export class AppShellComponent implements OnInit {
     { label: 'Suite', path: '/suite', roles: ['SUPER_ADMIN'], icon: 'settings' },
     { label: 'Usuarios', path: '/usuarios', roles: ['ADMIN'], icon: 'users' },
     { label: 'Admin', path: '/admin', roles: ['ADMIN'], icon: 'settings' },
-    { label: 'Balance', path: '/balance', roles: ['ADMIN'], icon: 'scale' },
+    { label: 'Balance', path: '/balance', roles: ['ADMIN', 'TECNICO'], icon: 'scale' },
   ];
 
   readonly navItems = computed(() => {

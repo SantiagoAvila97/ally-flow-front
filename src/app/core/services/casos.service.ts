@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map, shareReplay } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import type { Caso, CompletarCasoPayload, CrearCasoPayload, LineaCobro, TecnicoOption } from '../models/caso.model';
+import type { Caso, CompletarCasoPayload, CrearCasoPayload, GastoMaterial, LineaCobro, TecnicoOption } from '../models/caso.model';
 import type { ListCasosParams, PaginatedResult } from '../models/pagination.model';
 import { PAGE_SIZE_DEFAULT } from '../models/pagination.model';
 
@@ -114,6 +114,21 @@ export class CasosService {
   setLineasCobro(id: string, lineas: LineaCobro[]): Observable<Caso> {
     return this.http
       .patch<ApiList<Caso>>(`${this.base}/${id}/lineas-cobro`, { lineas })
+      .pipe(map((r) => r.data));
+  }
+
+  setGastosOperacion(
+    id: string,
+    payload: { pagoTecnico: number | null; gastosMateriales: GastoMaterial[] },
+  ): Observable<Caso> {
+    return this.http
+      .patch<ApiList<Caso>>(`${this.base}/${id}/gastos-operacion`, payload)
+      .pipe(map((r) => r.data));
+  }
+
+  adjuntarMateriales(id: string, gastosMateriales: GastoMaterial[]): Observable<Caso> {
+    return this.http
+      .post<ApiList<Caso>>(`${this.base}/${id}/gastos-materiales`, { gastosMateriales })
       .pipe(map((r) => r.data));
   }
 

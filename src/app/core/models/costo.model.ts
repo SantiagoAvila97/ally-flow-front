@@ -13,7 +13,6 @@ export interface ItemCosto {
   categoriaId: string;
   nombre: string;
   descripcion: string;
-  costoInterno: number;
   precioSugerido: number;
   unidad: string;
   activo: boolean;
@@ -39,7 +38,6 @@ export interface CrearItemPayload {
   categoriaId: string;
   nombre: string;
   descripcion: string;
-  costoInterno: number;
   precioSugerido: number;
   unidad: string;
   activo?: boolean;
@@ -49,7 +47,6 @@ export interface ActualizarItemPayload {
   categoriaId?: string;
   nombre?: string;
   descripcion?: string;
-  costoInterno?: number;
   precioSugerido?: number;
   unidad?: string;
   activo?: boolean;
