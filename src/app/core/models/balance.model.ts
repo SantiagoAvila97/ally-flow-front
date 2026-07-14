@@ -1,6 +1,12 @@
 import type { EstadoCaso } from './caso.model';
 
-export type BalancePeriodo = '7d' | '30d' | '90d' | 'month' | 'all';
+export type BalancePeriodo = '7d' | '30d' | '90d' | 'month' | 'all' | 'custom';
+
+export interface BalanceRango {
+  periodo: BalancePeriodo;
+  desde?: string | null;
+  hasta?: string | null;
+}
 
 export interface BalanceTotales {
   pendienteEnviarCobro: number;

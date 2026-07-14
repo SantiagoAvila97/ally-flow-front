@@ -407,7 +407,7 @@ export class LoginComponent implements OnInit, OnDestroy {
     { label: 'En visita', hint: 'Evidencias en campo' },
     { label: 'Por facturar', hint: 'Armando la factura' },
     { label: 'Factura enviada', hint: 'Espera OK cliente' },
-    { label: 'Factura sin pagar', hint: 'Pendiente de pago' },
+    { label: 'Pendiente de pago', hint: 'Espera cobro del cliente' },
     { label: 'Pagada', hint: 'Balance actualizado' },
   ];
 

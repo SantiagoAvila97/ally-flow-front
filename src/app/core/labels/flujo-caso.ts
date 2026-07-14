@@ -13,7 +13,7 @@ export const FLUJO_COMERCIAL: FlujoPasoDef[] = [
   { estado: 'EnGestion', titulo: 'En visita' },
   { estado: 'PendienteDocumentoCobro', titulo: 'Por facturar' },
   { estado: 'PendienteConfirmacionAsegurado', titulo: 'Factura enviada · espera OK' },
-  { estado: 'PendienteRecepcionPago', titulo: 'Factura sin pagar' },
+  { estado: 'PendienteRecepcionPago', titulo: 'Pendiente de pago' },
   { estado: 'Cobrado', titulo: 'Pagada' },
 ];
 

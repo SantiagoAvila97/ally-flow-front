@@ -7,7 +7,7 @@ export const LABEL_ESTADO_CASO: Record<EstadoCaso, string> = {
   EnGestion: 'En visita',
   PendienteDocumentoCobro: 'Por facturar',
   PendienteConfirmacionAsegurado: 'Factura enviada · espera OK',
-  PendienteRecepcionPago: 'Factura sin pagar',
+  PendienteRecepcionPago: 'Pendiente de pago',
   Cobrado: 'Pagada',
   EnGarantia: 'Pagada',
   CerradoGarantia: 'Pagada',

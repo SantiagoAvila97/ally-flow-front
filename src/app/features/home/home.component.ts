@@ -613,7 +613,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     },
     {
       estado: 'PendienteRecepcionPago',
-      titulo: '6. Factura sin pagar',
+      titulo: '6. Pendiente de pago',
       descripcion:
         'El cliente ya dio OK. La factura está aprobada y falta registrar el pago del cliente.',
       actor: 'Administrador',

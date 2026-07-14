@@ -471,7 +471,7 @@ interface ConfirmEstadoPayload {
 
           @if (canMarcarCobrado(c)) {
             <section class="mt-8 rounded-lg border border-teal-200 bg-white p-5">
-              <h2 class="text-sm font-semibold text-brand-ink">Factura sin pagar</h2>
+              <h2 class="text-sm font-semibold text-brand-ink">Pendiente de pago</h2>
               <p class="mt-1 text-sm text-slate-600">
                 Marca como pagada cuando hayas recibido el pago del cliente.
               </p>
@@ -1890,7 +1890,7 @@ export class CasoDetalleComponent implements OnInit {
         return true;
       case 'PendienteDocumentoCobro': // Por facturar
       case 'PendienteConfirmacionAsegurado': // Factura enviada · espera OK
-      case 'PendienteRecepcionPago': // Factura sin pagar
+      case 'PendienteRecepcionPago': // Pendiente de pago
       case 'Cobrado':
       case 'CerradoGarantia':
       default:
